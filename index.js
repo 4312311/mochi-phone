@@ -3460,7 +3460,7 @@ const HTML = `
             <div id="rp-lock-notifs"></div>
           </div>
           <div id="rp-lock-widget"></div>
-          <div id="rp-swipe-hint">向上轻扫以解锁</div>
+          <div id="rp-swipe-hint">点击屏幕以解锁</div>
           <div id="rp-swipe-zone"></div>
         </div>
 
