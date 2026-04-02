@@ -555,12 +555,13 @@ function beautifySMSInChat(text) {
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
   
-  // 直接加载状态，不使用重试机制
-  // 因为当字符切换时，SillyTavern的上下文应该已经更新
-  const characterId = getCurrentCharacterId();
-  console.log('[Messages] Loading state for character:', characterId);
-  loadState();
-  renderThreadList();
+  // 延迟加载状态，确保SillyTavern的上下文已经加载完成
+  setTimeout(() => {
+    const characterId = getCurrentCharacterId();
+    console.log('[Messages] Loading state for character:', characterId);
+    loadState();
+    renderThreadList();
+  }, 1000);
 
   // Bind thread item click
   $(document).on('click', '.rp-thread', function() {
