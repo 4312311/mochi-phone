@@ -291,32 +291,91 @@ function navigateTo(page, appInfo = null) {
 }
 
 // ================================================================
+//  工具函数（检测触摸设备）
+// ================================================================
+const IS_TOUCH_DEVICE = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+// ================================================================
 //  初始化
 // ================================================================
 async function init() {
   console.log('[Raymond Phone] Initializing...');
-  
+
+  // Hot-reload safety: remove stale elements
+  const stale = document.getElementById('rp-wrapper');
+  if (stale) stale.remove();
+  const staleFab = document.getElementById('rp-fab');
+  if (staleFab) staleFab.remove();
+  const staleCSS = document.getElementById('rp-phone-css');
+  if (staleCSS) staleCSS.remove();
+
   // 注入HTML
   document.body.insertAdjacentHTML('beforeend', RP_PHONE_HTML);
-  
+
+  // Defensive: ensure FAB visible after append
+  var _f = document.getElementById('rp-fab');
+  if (_f) {
+    _f.style.cssText += ';display:flex!important;visibility:visible!important;opacity:1!important';
+  }
+
+  // 修复移动端布局
+  (function fixMobileLayout() {
+    const frame = document.getElementById('rp-frame');
+    var _ph = document.getElementById('rp-phone');
+    if (_ph) {
+      IS_TOUCH_DEVICE ? _ph.classList.add('rp-mobile-pos') : _ph.classList.remove('rp-mobile-pos');
+    }
+    if (IS_TOUCH_DEVICE) {
+      // 移动端 FAB 位置修复
+      function _applyFabPos() {
+        if (!IS_TOUCH_DEVICE) return;
+        const _fab = document.getElementById('rp-fab');
+        if (!_fab) return;
+        const _h = Math.max(_fab.offsetHeight, 32);
+        _fab.style.setProperty('top', (window.innerHeight - 110 - _h) + 'px', 'important');
+        _fab.style.setProperty('bottom', 'auto', 'important');
+        _fab.style.setProperty('right', '14px', 'important');
+        _fab.style.setProperty('left', 'auto', 'important');
+        _fab.style.setProperty('display', 'flex', 'important');
+        _fab.style.setProperty('visibility', 'visible', 'important');
+      }
+      _applyFabPos();
+      setTimeout(_applyFabPos, 200);
+      setTimeout(_applyFabPos, 800);
+      // 强制 frame 尺寸 300×560 (手机端专用)
+      if (frame) {
+        frame.style.setProperty('width', '300px', 'important');
+        frame.style.setProperty('height', '560px', 'important');
+        frame.style.setProperty('border-radius', '38px', 'important');
+      }
+    } else {
+      // PC端：清除任何可能残留的手机端内联样式
+      if (frame) {
+        frame.style.removeProperty('width');
+        frame.style.removeProperty('height');
+        frame.style.removeProperty('border-radius');
+      }
+    }
+  })();
+
   // 加载状态
   loadState();
-  
+
   // 初始化主题模块
   initThemes();
-  
+
   // 初始化短信模块
   initSMS();
-  
+
   // 绑定FAB点击事件
   $('#rp-fab').on('click', function() {
     $('#rp-phone').toggle();
   });
-  
+
   // 绑定应用图标点击事件（路由）
   $('#rp-app-grid .rp-app').on('click', function() {
     const app = $(this).data('app');
-    
+
     switch(app) {
       case 'messages':
         navigateTo('messages');
@@ -329,7 +388,7 @@ async function init() {
         navigateTo('not-migrated', app);
     }
   });
-  
+
   // 绑定未迁移页面的返回按钮
   $('#rp-not-migrated .rp-back-btn').on('click', function() {
     navigateTo('home');
@@ -345,7 +404,7 @@ async function init() {
 
   // 显示FAB
   $('#rp-wrapper').show();
-  
+
   console.log('[Raymond Phone] Initialized successfully');
 }
 
