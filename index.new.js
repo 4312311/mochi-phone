@@ -103,7 +103,7 @@ function getTagAttrs(str) {
 
 // 获取SillyTavern上下文
 function getContext() {
-  return window.getContext ? getContext() : (window.SillyTavern && window.SillyTavern.getContext ? window.SillyTavern.getContext() : null);
+  return window.getContext ? window.getContext() : (window.SillyTavern && window.SillyTavern.getContext ? window.SillyTavern.getContext() : null);
 }
 
 // ================================================================
