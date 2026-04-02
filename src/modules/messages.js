@@ -888,5 +888,6 @@ export {
   refreshBadges,
   getSTATE,
   saveState,
-  loadState
+  loadState,
+  syncToCurrentChat
 };

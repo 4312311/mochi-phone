@@ -35,7 +35,8 @@ import {
   toggleAttachPanel,
   findOrCreateThread,
   showBanner,
-  refreshBadges
+  refreshBadges,
+  syncToCurrentChat
 } from './src/modules/messages.js';
 
 // 4. 导入主题模块
