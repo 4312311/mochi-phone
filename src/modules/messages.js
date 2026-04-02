@@ -23,7 +23,7 @@ function getCurrentCharacterId() {
   try {
     if (window.SillyTavern && window.SillyTavern.getContext) {
       const context = window.SillyTavern.getContext();
-      return context?.characterId || 'default';
+      return context?.chatId || (context?.characterId != null ? `char_${context.characterId}` : 'default');
     }
   } catch(e) {
     console.error('[Messages] Failed to get current character:', e);
@@ -555,21 +555,12 @@ function beautifySMSInChat(text) {
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
   
-  // 尝试加载状态，如果返回default，则重试
-  function tryLoadState() {
-    const characterId = getCurrentCharacterId();
-    if (characterId === 'default') {
-      console.log('[Messages] Waiting for character to load...');
-      // 延迟1秒后重试
-      setTimeout(tryLoadState, 1000);
-    } else {
-      console.log('[Messages] Loading state for character:', characterId);
-      loadState();
-      renderThreadList();
-    }
-  }
-  
-  tryLoadState();
+  // 直接加载状态，不使用重试机制
+  // 因为当字符切换时，SillyTavern的上下文应该已经更新
+  const characterId = getCurrentCharacterId();
+  console.log('[Messages] Loading state for character:', characterId);
+  loadState();
+  renderThreadList();
 
   // Bind thread item click
   $(document).on('click', '.rp-thread', function() {
