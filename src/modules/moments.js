@@ -1,198 +1,18 @@
-// ================================================================
-//  MOMENTS (朋友圈)
-//  朋友圈模块
-// ================================================================
+/**
+ * 朋友圈模块
+ * 处理朋友圈动态、点赞、评论等功能
+ */
 
-const STAGE_NAMES = { 1: '初识 · 试探', 2: '增进 · 主导', 3: '陷落 · 占有' };
+import { STATE } from '../core/state.js';
+import { escHtml } from '../core/utils.js';
+import { saveState } from '../core/state.js';
+import { showBanner } from './chat.js';
+import { matchThread } from './sms.js';
 
-function normNameKey(s) {
-  return String(s || '').toLowerCase().replace(/[\s·•\-_]+/g, '');
-}
-
-function resolveNpcPersonaByName(name, npcPersonaMap) {
-  if (!name || !npcPersonaMap) return '';
-  const k = normNameKey(name);
-  if (npcPersonaMap[k]) return npcPersonaMap[k];
-
-  const keys = Object.keys(npcPersonaMap || {});
-  for (const kk of keys) {
-    const minLen = Math.min(k.length, kk.length);
-    if (minLen < 4) continue;
-    if (kk.startsWith(k) || k.startsWith(kk)) return npcPersonaMap[kk];
-  }
-
-  const first = String(name || '').trim().toLowerCase().split(/\s+/)[0] || '';
-  if (first && first.length >= 4) {
-    for (const kk of keys) {
-      if (kk.startsWith(first) && kk.length >= first.length) return npcPersonaMap[kk];
-    }
-  }
-
-  return '';
-}
-
-let _getMomentsCtxCache = null;
-let _getMomentsCtxCacheTime = 0;
-let _getMomentsCtxPromise = null;
-
-async function getMomentsCtx() {
-  const now = Date.now();
-  if (_getMomentsCtxCache && (now - _getMomentsCtxCacheTime) < 30000) {
-    return _getMomentsCtxCache;
-  }
-  if (_getMomentsCtxPromise) return _getMomentsCtxPromise;
-  _getMomentsCtxPromise = _doGetMomentsCtx();
-  try {
-    const result = await _getMomentsCtxPromise;
-    return result;
-  } finally {
-    _getMomentsCtxPromise = null;
-  }
-}
-
-async function _doGetMomentsCtx() {
-  const ctx = getContext();
-  const charName = ctx?.name2 || ctx?.characters?.[ctx?.characterId]?.name || '对方';
-  const userName = ctx?.name1 || '用户';
-
-  const knownNPCs = new Set();
-  Object.values(STATE.threads || {}).forEach(th => {
-    if (!th.name || th.name === charName) return;
-    if (th.type === 'group' || th.id.startsWith('grp_') || (th.members && th.members.length > 1)) return;
-    knownNPCs.add(th.name);
-  });
-  (STATE.moments || []).filter(m => m.from !== 'user' && m.name !== charName).forEach(m => knownNPCs.add(m.name));
-
-  const recentChat = (ctx?.chat || []).slice(-30).map(m => {
-    const spk = m.is_user ? userName : (m.name || charName);
-    return spk + ': ' + ((m.mes || '').replace(/<[^>]+>/g, '').trim().slice(0, 150));
-  }).join('\n') || '(暂无对话记录)';
-
-  let charPersona = '';
-  try {
-    const charObj = (ctx?.characters && ctx?.characterId !== undefined)
-      ? ctx.characters[ctx.characterId]
-      : (ctx?.char || null);
-    if (charObj) {
-      const parts = [];
-      if (charObj.description) parts.push(charObj.description.replace(/\s+/g, ' ').trim().slice(0, 350));
-      if (charObj.personality) parts.push('性格:' + charObj.personality.replace(/\s+/g, ' ').trim().slice(0, 150));
-      if (charObj.scenario)    parts.push('背景:' + charObj.scenario.replace(/\s+/g, ' ').trim().slice(0, 200));
-      charPersona = parts.filter(Boolean).join('\n');
-    }
-  } catch(e) { }
-
-  const npcPersonaMap = {};
-
-  try {
-    const chars = Array.isArray(ctx?.characters)
-      ? ctx.characters
-      : (ctx?.characters && typeof ctx.characters === 'object' ? Object.values(ctx.characters) : []);
-    chars.forEach(ch => {
-      const name = (ch?.name || '').trim();
-      if (!name || name === charName) return;
-      const parts = [];
-      if (ch.description) parts.push(ch.description.replace(/\s+/g, ' ').trim().slice(0, 280));
-      if (ch.personality) parts.push('性格:' + ch.personality.replace(/\s+/g, ' ').trim().slice(0, 140));
-      if (ch.scenario)    parts.push('背景:' + ch.scenario.replace(/\s+/g, ' ').trim().slice(0, 180));
-      const persona = parts.filter(Boolean).join('\n');
-      if (persona) npcPersonaMap[normNameKey(name)] = persona;
-    });
-  } catch(e) { }
-
-  try {
-    const wiTexts = [];
-
-    try {
-      const charObj = (ctx?.characters && ctx?.characterId !== undefined)
-        ? ctx.characters[ctx.characterId] : (ctx?.char || null);
-      const wiName = charObj?.data?.extensions?.world || charObj?.extensions?.world || '';
-      if (wiName && typeof ctx.loadWorldInfo === 'function') {
-        const wiData = await ctx.loadWorldInfo(wiName);
-        if (wiData?.entries) {
-          Object.values(wiData.entries).forEach(e => {
-            const content = e?.content || e?.text || '';
-            if (content) wiTexts.push(content);
-          });
-          console.log('[getMomentsCtx] loadWorldInfo:', wiName, '- entries:', Object.keys(wiData.entries).length);
-        }
-      }
-    } catch(e) { console.warn('[getMomentsCtx] loadWorldInfo failed:', e.message); }
-
-    [ctx?.worldInfoBefore, ctx?.worldInfoAfter, ctx?.world_info, ctx?.lorebook]
-      .filter(Boolean).forEach(s => wiTexts.push(String(s)));
-
-    try {
-      const ep = window.extension_prompts || {};
-      Object.values(ep).forEach(p => { if (p?.value) wiTexts.push(String(p.value)); });
-    } catch(e) {}
-
-    try {
-      const wi = window.world_info || {};
-      Object.values(wi).forEach(book => {
-        const entries = book?.entries || book?.content || {};
-        Object.values(entries).forEach(e => {
-          const content = e?.content || e?.text || '';
-          if (content && content.length > 10) wiTexts.push(content);
-        });
-      });
-    } catch(e) { console.warn('[getMomentsCtx] window.world_info scan failed:', e.message); }
-
-    const allWIText = wiTexts.join('\n');
-    if (allWIText) {
-      const blockRe = /<character(?:[_\-][^>]*)?>([\s\S]*?)<\/character(?:[_\-][^>]*)?>/gi;
-      let bm;
-      while ((bm = blockRe.exec(allWIText)) !== null) {
-        const block = bm[1];
-        const nameMatch = block.match(/^\s*name\s*[::]\s*(.+)/mi);
-        if (!nameMatch) continue;
-        const wName = nameMatch[1].trim().replace(/[<>]/g, '').split(/[\s,,]/)[0];
-        if (!wName || normNameKey(wName) === normNameKey(charName)) continue;
-        const fullText = block.replace(/<[^>]+>/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-        if (fullText.length > 20) {
-          npcPersonaMap[normNameKey(wName)] = fullText.slice(0, 500);
-        }
-      }
-
-      const wiEntries = wiTexts;
-      wiEntries.forEach(entryText => {
-        if (!entryText || entryText.length < 10) return;
-        let extractedName = '';
-
-        const bracketMatch = entryText.match(/^\s*\[([^\]|\/\\-]+?)(?:[-|\/\\][^\]]*?)?\]/m);
-        if (bracketMatch) {
-          extractedName = bracketMatch[1].trim();
-        }
-        if (!extractedName) {
-          const mdMatch = entryText.match(/^\s*#{1,3}\s*([^\n#\--]+)/m);
-          if (mdMatch) extractedName = mdMatch[1].trim();
-        }
-        if (!extractedName) {
-          const colonMatch = entryText.match(/^\s*(?:name|角色名|名字)\s*[::：]\s*(.+)$/m);
-          if (colonMatch) extractedName = colonMatch[1].trim();
-        }
-
-        if (extractedName && extractedName.length >= 2) {
-          const cleaned = entryText.replace(/<[^>]+>/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-          if (cleaned.length > 20 && !npcPersonaMap[normNameKey(extractedName)]) {
-            npcPersonaMap[normNameKey(extractedName)] = cleaned.slice(0, 500);
-          }
-        }
-      });
-    }
-  } catch(e) { console.warn('[getMomentsCtx] world info parsing failed:', e.message); }
-
-  return {
-    charName,
-    userName,
-    charPersona,
-    npcPersonaMap,
-    knownNPCs: Array.from(knownNPCs),
-    recentChat
-  };
-}
-
-function cleanMomentText(text) {
+/**
+ * 清理朋友圈文本
+ */
+export function cleanMomentText(text) {
   if (!text) return '';
   return text
     .replace(/<img\b[^>]*>/gi, '')
@@ -203,8 +23,14 @@ function cleanMomentText(text) {
     .trim();
 }
 
-function renderMoments() {
+/**
+ * 渲染朋友圈
+ */
+export function renderMoments() {
   console.log('[Phone:diag] renderMoments STATE.avatars=', JSON.stringify(STATE.avatars));
+  console.log('[Phone:diag] renderMoments called from:', new Error().stack.split('\n').slice(1,4).join(' | '));
+  const momentImgSnap = (STATE.moments||[]).map(m=>({id:m.id,hasImg:!!m.img,pendingImg:m.pendingImg?.slice(0,20)}));
+  console.log('[Phone:diag] renderMoments moments snapshot:', JSON.stringify(momentImgSnap));
   const container = $('#rp-moments-list').empty();
   if (!STATE.moments || STATE.moments.length === 0) {
     container.append('<div class="rp-moments-empty"><span>📭</span><span>暂无动态</span></div>');
@@ -263,132 +89,206 @@ function renderMoments() {
   });
 }
 
-async function friendsInteractOnMoment(momentId) {
-  if (!STATE._friendsInteractDone) STATE._friendsInteractDone = new Set();
-  if (STATE._friendsInteractDone.has(momentId)) return;
-  STATE._friendsInteractDone.add(momentId);
+/**
+ * 接收朋友圈动态
+ */
+export function incomingMoment(fromRaw, time, text, img, pendingImgPrompt, pendingImgType) {
+  // ── momentId：from + time + 毫秒戳，每条唯一，彻底避免同时刻不同角色/纯图片碰撞 ──
+  const _idBase = fromRaw.toLowerCase().replace(/\s+/g,'_') + '_' + time.replace(':','');
+  const momentId = _idBase + '_' + Date.now();
 
-  const moment = (STATE.moments || []).find(m => m.id === momentId);
-  if (!moment) return;
+  // ── FIX: chatId 一致性守卫 ──
+  // CHAT_CHANGED 事件有时滞后，导致 STATE.chatId 还是旧窗口的 id，
+  // 此时 ctx.chatId 才是真正"正在聊天的窗口"。
+  // 如果两者不一致，说明这条 moment 属于当前真实窗口（ctx.chatId），
+  // 不能写进 STATE.moments（那是旧窗口的），要直接写到正确 chatId 的 localStorage slot，
+  // 等 onChatChanged/syncToCurrentChat 后续触发时自然加载回来。
+  const _ctx = getContext();
+  const _realChatId = _ctx?.chatId || ((_ctx?.characterId != null) ? 'char_' + _ctx.characterId : null);
+  if (_realChatId && _realChatId !== STATE.chatId) {
+    console.warn('[Phone:moment] chatId 不一致，STATE:', STATE.chatId, '→ ctx:', _realChatId, '，写入正确 slot 而非内存');
+    try {
+      const _slotRaw = localStorage.getItem(`rp-phone-v1-${_realChatId}`);
+      const _slot = _slotRaw ? JSON.parse(_slotRaw) : null;
+      if (_slot) {
+        _slot.moments = _slot.moments || [];
+        const _threadId0 = matchThread(fromRaw) || fromRaw;
+        const _dup = _slot.moments.find(m =>
+          m.from === _threadId0 && m.time === time && m.text === (text || '')
+        );
+        if (!_dup) {
+          _slot.moments.push({
+            id: momentId,
+            from: _threadId0,
+            name: fromRaw,
+            initials: fromRaw.slice(0,2).toUpperCase(),
+            avatarBg: 'linear-gradient(145deg,#555,#333)',
+            time, text,
+            img: img || null,
+            pendingImg: (!img && pendingImgPrompt) ? pendingImgPrompt : null,
+            pendingImgType: (!img && pendingImgPrompt) ? (pendingImgType || 'chatu8') : null,
+            likes: [], comments: [],
+          });
+          localStorage.setItem(`rp-phone-v1-${_realChatId}`, JSON.stringify(_slot));
+          console.log('[Phone:moment] 已写入正确 slot:', _realChatId, momentId);
+        }
+      }
+    } catch(e) { console.warn('[Phone:moment] 写入正确 slot 失败', e); }
+    return momentId; // 不污染当前 STATE.moments
+  }
 
-  const { charName, npcs, npcPersonaMap } = await getMomentsCtx();
-
-  const authorName = moment.name;
-  const isUserMoment = moment.from === 'user';
-  const allFriends = (isUserMoment ? npcs : [charName, ...npcs]).filter(n => n && n !== authorName);
-  if (allFriends.length === 0) return;
-
-  const now = new Date();
-  const ts = () => {
-    const d = new Date();
-    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  };
-
-  allFriends.forEach(name => {
-    if (Math.random() < 0.7 && !moment.likes.includes(name)) {
-      moment.likes.push(name);
+  // ── 去重：from+time+text 三字段去重（不含 img）──
+  // 原因：ComfyUI 完成生图后 media-auto-generation 会修改 mes，触发 1.2s 轮询再次 parsePhone，
+  // 此时 img 字段从 null 变为真实 src，若用 img 参与去重则命中失败，导致插入重复脏条目。
+  const _threadId = matchThread(fromRaw) || fromRaw;
+  const existingMoment = STATE.moments && STATE.moments.find(m =>
+    m.from === _threadId && m.time === time && m.text === (text || '')
+  );
+  if (existingMoment) {
+    // 若已存在 moment 没有图片，但本次解析拿到了图片 → 回填（ComfyUI 完成态覆盖 pending 态）
+    if (!existingMoment.img && img) {
+      existingMoment.img = img;
+      existingMoment.pendingImg = null;
+      existingMoment.pendingImgType = null;
+      // 同时清理 _pendingMomentImgs 里对应条目，避免 Observer 重复回填
+      if (STATE._pendingMomentImgs) {
+        for (const [k, v] of STATE._pendingMomentImgs) {
+          if (v === momentId) { STATE._pendingMomentImgs.delete(k); break; }
+        }
+      }
+      if (STATE.currentView === 'moments') renderMoments();
+      saveState();
+      console.log('[Phone:moment:update] ComfyUI 完成，回填已存在 moment 的图片', { momentId, src: img.slice(0, 80) });
     }
+    return existingMoment.id;  // 必须返回 id，否则 parsePhone 的 _pendingMomentImgs.set 会写入 undefined
+  }
+  const threadId = matchThread(fromRaw);
+  const th = STATE.threads[threadId];
+  STATE.moments = STATE.moments || [];
+  STATE.moments.push({
+    id: momentId,
+    from: threadId || fromRaw,
+    name: th ? th.name : fromRaw,
+    initials: th ? th.initials : fromRaw.slice(0,2).toUpperCase(),
+    avatarBg: th ? th.avatarBg : 'linear-gradient(145deg,#555,#333)',
+    time, text,
+    img: img || null,
+    // ── 朋友圈生图占位：等待生图完成后回填 ──
+    // pendingImgType: 'chatu8'(智绘姬,需点击) | 'comfy'(ComfyUI,全自动)
+    pendingImg: (!img && pendingImgPrompt) ? pendingImgPrompt : null,
+    pendingImgType: (!img && pendingImgPrompt) ? (pendingImgType || 'chatu8') : null,
+    likes: [],
+    comments: [],
   });
   if (STATE.currentView === 'moments') renderMoments();
+  showBanner((th ? th.name : fromRaw), '发了朋友圈:' + (text ? text.slice(0,25) + (text.length>25?'...':'') : '📷 图片'), time);
   saveState();
-
-  if (isUserMoment) {
-    if (STATE.currentView === 'moments') renderMoments();
-    saveState();
-    return;
-  }
-
-  const alreadyCommented = new Set((moment.comments || []).map(c => c.name));
-  const eligible = allFriends.filter(n => !alreadyCommented.has(n));
-  const shuffled = eligible.sort(() => Math.random() - 0.5);
-  const commentors = shuffled.slice(0, 3);
-  if (commentors.length === 0) return;
-
-  const npcPersonaText = commentors.map(n => {
-    const p = npcPersonaMap?.[normNameKey(n)] || '';
-    return p ? ('- ' + n + ':' + p.replace(/\n/g, ';').slice(0, 150)) : ('- ' + n);
-  }).join('\n');
-
-  const sysMsg = '你是角色扮演社交媒体互动模拟器。\n规则:每个角色评论风格符合其人设;所有评论用中文;不超过20字;不加引号。';
-  const prompt = '朋友圈动态作者:' + authorName + '\n内容:「' + (moment.text.slice(0, 80) || (moment.img ? '[发了一张图片]' : '[动态]')) + '」\n\n'
-    + '以下角色各写一条评论(语气符合各自性格,互相不重复):\n' + npcPersonaText
-    + '\n\n只返回JSON数组,格式:[{"from":"角色名","text":"评论内容"}, ...]';
-
-  try {
-    const resp = await lgCallAPI(prompt, 300, sysMsg);
-    if (!resp) return;
-    const jsonStr = resp.match(/\[[\s\S]*\]/)?.[0];
-    if (!jsonStr) return;
-    const items = JSON.parse(jsonStr);
-    const allowedSet = new Set(allFriends.map(n => normNameKey(n)));
-    items.forEach(item => {
-      if (!item.from || !item.text) return;
-      const k = normNameKey(item.from);
-      const isAllowed = allowedSet.has(k) || [...allowedSet].some(a => a.startsWith(k) || k.startsWith(a));
-      if (!isAllowed) return;
-      const cleaned = item.text.trim().replace(/^[「"'\s]+|[」"'\s]+$/g, '');
-      if (cleaned && cleaned.length > 1) {
-        incomingComment(momentId, item.from.trim(), ts(), cleaned, null);
-      }
-    });
-    if (STATE.currentView === 'moments') renderMoments();
-    saveState();
-  } catch(e) {
-    console.warn('[Moments] friendsInteractOnMoment error:', e);
-  }
+  // 好友自动点赞+评论
+  setTimeout(() => friendsInteractOnMoment(momentId), 1500);
+  return momentId; // 供调用方（parsePhone）获取真实 ID 用于 _pendingMomentImgs 映射
 }
 
-async function generateAIReply(momentId, userCommentText, fromName) {
-  const moment = STATE.moments?.find(m => m.id === momentId);
-  if (!moment) return;
-  const authorName = fromName || moment.name;
-  const { charName, charPersona, npcPersonaMap } = await getMomentsCtx();
-  let sysMsg3 = '';
-  if (authorName === charName && charPersona) {
-    sysMsg3 = '你正在扮演 ' + charName + ',人设如下:\n' + charPersona.slice(0, 300) + '\n\n回复时必须严格符合该人设的语气和性格,用中文回复,不超过20字,只返回回复内容本身。';
-  } else {
-    const npcPersona = resolveNpcPersonaByName(authorName, npcPersonaMap) || '';
-    sysMsg3 = '你正在扮演 ' + authorName + ',' + (npcPersona ? ('其人设如下:\n' + npcPersona.slice(0, 300) + '\n') : '根据其在故事中的言行推断语气,') + '用中文回复,不超过20字,只返回回复内容本身。';
+/**
+ * 接收朋友圈评论
+ */
+export function incomingComment(momentId, fromRaw, time, text, replyTo) {
+  // 优先精确匹配，其次做 includes 模糊匹配
+  let moment = STATE.moments && (
+    STATE.moments.find(m => m.id === momentId) ||
+    STATE.moments.find(m => m.id.includes(momentId) || momentId.includes(m.id))
+  );
+  if (!moment) {
+    // Fallback: 找最近一条动态（不局限于 user，避免评论打到错误动态）
+    moment = (STATE.moments && STATE.moments.length > 0)
+      ? STATE.moments[STATE.moments.length - 1]
+      : null;
   }
-  const prompt3 = authorName + '的朋友圈:「' + (moment.text || (moment.img ? '[发了一张图片]' : '[动态]')) + '」\n用户评论:「' + userCommentText + '」\n' + authorName + '回复:';
-  const resp = await lgCallAPI(prompt3, 100, sysMsg3);
-  if (!resp) return;
-  const now = new Date();
-  const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  const cleaned = resp.trim().replace(/^[「"']|[」"']$/g, '');
-  incomingComment(momentId, authorName, ts, cleaned, null);
-}
-
-async function momentAISocial(momentId) {
-  const moment = (STATE.moments || []).find(m => m.id === momentId);
   if (!moment) return;
-
-  const { charName, charPersona, npcPersonaMap } = await getMomentsCtx();
-
-  if (moment.from !== 'user') {
-    await friendsInteractOnMoment(momentId);
-    return;
+  const threadId = matchThread(fromRaw);
+  const th = STATE.threads[threadId];
+  const name = th ? th.name : fromRaw;
+  let replyToIdx = null;
+  if (replyTo) {
+    replyToIdx = moment.comments.findIndex(cm => cm.name === replyTo);
+    if (replyToIdx < 0) replyToIdx = null;
   }
-
-  const sysMsg = '你是角色扮演社交媒体互动模拟器。用户发了一条朋友圈,请让主角(' + charName + ')评论,语气符合其人设,用中文,不超过20字,只返回评论内容本身。';
-  const prompt = charName + '的朋友圈:「' + (moment.text || (moment.img ? '[发了一张图片]' : '[动态]')) + '」\n' + charName + '评论:';
-  try {
-    const resp = await lgCallAPI(prompt, 100, sysMsg);
-    if (!resp) return;
-    const now = new Date();
-    const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-    const cleaned = resp.trim().replace(/^[「"']|[」"']$/g, '');
-    incomingComment(momentId, charName, ts, cleaned, null);
-  } catch(e) {
-    console.warn('[Moments] momentAISocial error:', e);
-  }
-}
-
-function incomingComment(momentId, name, time, text, replyTo) {
-  const moment = (STATE.moments || []).find(m => m.id === momentId);
-  if (!moment) return;
-  if (!moment.comments) moment.comments = [];
-  moment.comments.push({ name, time, text, replyTo });
+  moment.comments = moment.comments || [];
+  // 去重：同名同文的评论不重复插入
+  const isDup = moment.comments.some(c => c.name === name && c.text === text);
+  if (isDup) return;
+  moment.comments.push({ from: threadId || fromRaw, name, text, time, replyTo: replyToIdx });
   if (STATE.currentView === 'moments') renderMoments();
   saveState();
 }
+
+/**
+ * 切换点赞
+ */
+export function toggleLike(momentId) {
+  const moment = STATE.moments && STATE.moments.find(m => m.id === momentId);
+  if (!moment) return;
+  const idx = moment.likes.indexOf('user');
+  if (idx >= 0) moment.likes.splice(idx, 1);
+  else moment.likes.push('user');
+  renderMoments();
+  saveState();
+}
+
+/**
+ * 发送朋友圈评论
+ */
+export async function sendMomentComment(momentId, text, replyToName) {
+  const moment = STATE.moments && STATE.moments.find(m => m.id === momentId);
+  if (!moment || !text.trim()) return;
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  let replyToIdx = null;
+  if (replyToName) {
+    replyToIdx = moment.comments.findIndex(cm => cm.name === replyToName);
+    if (replyToIdx < 0) replyToIdx = null;
+  }
+  moment.comments = moment.comments || [];
+  moment.comments.push({ from: 'user', name: '我', text: text.trim(), time: ts, replyTo: replyToIdx });
+  renderMoments();
+  saveState();
+  // 直接调 API 生成回复,不走 ST send_textarea
+  if (moment.from !== 'user') {
+    // 评论的是 AI 角色的动态 → 该角色回复(用 moment.name 而不是 moment.from)
+    setTimeout(() => generateAIReply(momentId, text.trim(), moment.name), 600);
+  } else {
+    // 评论的是用户自己的动态 → 触发 AI 社交互动
+    setTimeout(() => momentAISocial(momentId), 600);
+  }
+}
+
+/**
+ * 好友互动（占位函数）
+ */
+function friendsInteractOnMoment(momentId) {
+  // TODO: 实现好友自动点赞+评论逻辑
+  console.log('[Phone:moment] friendsInteractOnMoment called for', momentId);
+}
+
+/**
+ * 生成AI回复（占位函数）
+ */
+function generateAIReply(momentId, text, charName) {
+  // TODO: 实现AI回复评论的逻辑
+  console.log('[Phone:moment] generateAIReply called for', momentId, text, charName);
+}
+
+/**
+ * 朋友圈AI社交互动（占位函数）
+ */
+function momentAISocial(momentId) {
+  // TODO: 实现朋友圈AI社交互动逻辑
+  console.log('[Phone:moment] momentAISocial called for', momentId);
+}
+
+// 将函数暴露到全局，供HTML中的onclick使用
+window.renderMoments = renderMoments;
+window.cleanMomentText = cleanMomentText;
+window.incomingMoment = incomingMoment;
+window.incomingComment = incomingComment;
+window.toggleLike = toggleLike;
+window.sendMomentComment = sendMomentComment;

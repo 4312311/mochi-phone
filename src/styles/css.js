@@ -1,8 +1,11 @@
 // ================================================================
-//  CSS STYLES
-//  CSS 样式定义
+//  INJECT STYLES
+//  CSS 从 manifest 的 css 字段移至此处 JS 注入,
+//  彻底绕开 SillyTavern 扩展 CSS 加载管线,
+//  避免与终端正则美化 <style> 标签的 CSS 解析器产生冲突。
 // ================================================================
-const RP_PHONE_CSS = `/* ── wrapper ── */
+
+export const RP_PHONE_CSS = `/* ── wrapper ── */
 #rp-wrapper { position:fixed; right:20px; bottom:20px; z-index:9998; }
 
 /* ── FAB ── */
@@ -25,6 +28,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   cursor:default;
 }
 
+
 /* ══════════════════════════════════════
    📱 MOBILE RESPONSIVE ADAPTATION
    ══════════════════════════════════════ */
@@ -32,6 +36,8 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   #rp-fab {
     width: 32px !important;
     height: 32px !important;
+    /* font-size removed: using image icon */
+    /* ST 给 html 加 transform 导致 bottom: 失效,必须用 top: calc(100vh) 绕过 */
     top: calc(100vh - 142px) !important;
     bottom: auto !important;
     right: 14px !important;
@@ -43,6 +49,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
     backdrop-filter: blur(12px) !important;
     z-index: 2147483647 !important;
   }
+  /* PC mode: phone stays at fixed right:84px - centering via JS class only */
   #rp-phone.rp-mobile-pos {
     left: calc(50vw - 150px) !important;
     top: calc(50vh - 280px) !important;
@@ -66,18 +73,20 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
     height: calc(100dvh - 60px) !important;
   }
 }
-
 /* ── CSS THEME TOKENS ── */
 #rp-phone {
+  /* Frame */
   --rp-frame-bg:linear-gradient(160deg,#e8e8e8,#d0d0d0);
   --rp-frame-sh:0 0 0 1.5px rgba(0,0,0,.12),0 0 0 1.5px rgba(0,0,0,.08),0 36px 80px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.5);
   --rp-btn-bg:#c0c0c0;
   --rp-island-bg:#000;
   --rp-island-ring:#f5f5f5;
   --rp-screen-bg:#fff;
+  /* Status bar */
   --rp-sbar-color:#e06080;
   --rp-bat-border:rgba(0,0,0,.4);
   --rp-bat-nub:rgba(0,0,0,.3);
+  /* Lock screen */
   --rp-lock-wall:linear-gradient(rgba(255,230,240,.10),rgba(255,210,225,.12)),url('https://i.postimg.cc/Hx8NSZL6/shou-ji-bi-zhi-fen-xiang-fen-se-da-hai-wen-rou-bao-ji-1-chao-ji-kun-dan-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
   --rp-lock-color:#4a1030;
   --rp-lock-time:#e06080;
@@ -85,30 +94,37 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   --rp-ln-bg:rgba(255,255,255,.85);
   --rp-ln-bd:rgba(0,0,0,.06);
   --rp-ln-text:rgba(0,0,0,.85);
+  /* Home screen */
   --rp-home-wall:linear-gradient(rgba(255,230,240,.08),rgba(255,215,228,.10)),url('https://i.postimg.cc/Hx8NSZL6/shou-ji-bi-zhi-fen-xiang-fen-se-da-hai-wen-rou-bao-ji-1-chao-ji-kun-dan-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
   --rp-clock-color:#e06080;
   --rp-app-lbl:#c04870;
   --rp-app-lbl-sh:0 1px 6px rgba(255,255,255,.8);
   --rp-indicator:rgba(0,0,0,.25);
+  /* Widget */
   --rp-widget-bg:rgba(255,255,255,.6);
   --rp-widget-bd:rgba(0,0,0,.08);
   --rp-widget-color:#000;
   --rp-wd-fill:linear-gradient(90deg,#2563eb,#60a5fa);
+  /* Nav bar */
   --rp-nav-bg:rgba(255,255,255,.72);
   --rp-nav-bd:rgba(255,180,200,.2);
   --rp-nav-title:#4a1030;
   --rp-nav-btn:#c0306a;
+  /* Messages / thread */
   --rp-msg-bg:transparent;
   --rp-bubbles-bg:transparent;
   --rp-sent-bg:#2563eb;
   --rp-recv-bg:#e9ecef;
   --rp-recv-color:#000;
+  /* Composer */
   --rp-composer-bg:rgba(255,255,255,.75);
   --rp-composer-bd:rgba(255,180,200,.2);
   --rp-input-bg:rgba(0,0,0,.04);
   --rp-input-bd:rgba(0,0,0,.12);
   --rp-input-color:#000;
   --rp-send-bg:linear-gradient(135deg,#e0567a,#f472b6);
+  /* Themes view */
+  /* Shape & Animation tokens */
   --rp-ico-radius:13px;
   --rp-ico-sh:0 2px 10px rgba(0,0,0,.15);
   --rp-ico-hover-sh:0 6px 20px rgba(0,0,0,.18);
@@ -136,6 +152,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   --rp-themes-bg:transparent;
   --rp-themes-label:#7c3aed;
   --rp-tc-bg:#fff;
+  /* Thread list */
   --rp-threads-bg:transparent;
   --rp-thread-bd:rgba(0,0,0,.08);
   --rp-thread-hover:rgba(0,0,0,.03);
@@ -144,11 +161,181 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   --rp-tt-color:rgba(0,0,0,.4);
   --rp-hd-name:rgba(0,0,0,.6);
   --rp-bts-color:rgba(0,0,0,.4);
+  /* Moments */
   --rp-moments-bg:transparent;
   --rp-moment-card:#fff;
   --rp-moment-name:#2563eb;
   --rp-moment-text:#1a1a1a;
   --rp-moment-bd:rgba(0,0,0,.06);
+}
+
+/* ── Star Night Theme ── */
+#rp-phone.rp-theme-star {
+  --rp-frame-bg:linear-gradient(160deg,#2c1070,#1a0850);
+  --rp-frame-sh:0 0 0 1.5px rgba(100,60,200,.3),0 0 0 1.5px rgba(100,60,200,.15),0 36px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(120,80,255,.2);
+  --rp-btn-bg:#3a1a80;
+  --rp-island-bg:#0a0620;
+  --rp-island-ring:#0e0a30;
+  --rp-screen-bg:transparent;
+  --rp-sbar-color:#c8c0f5;
+  --rp-bat-border:rgba(180,160,255,.4);
+  --rp-bat-nub:rgba(180,160,255,.3);
+  --rp-lock-wall:linear-gradient(rgba(8,4,20,.35),rgba(12,6,30,.4)),url('https://i.postimg.cc/DfjgWdyn/wan-an-bi-zhi-an-se-xi-hua-hua-bi-zhi-1-bai-le-you-de-bai-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
+  --rp-lock-color:#e8e0ff;
+  --rp-lock-time:#f2eeff;
+  --rp-swipe-color:rgba(180,160,255,.3);
+  --rp-ln-bg:rgba(15,10,42,.88);
+  --rp-ln-bd:rgba(150,120,255,.12);
+  --rp-ln-text:rgba(220,210,255,.85);
+  --rp-home-wall:linear-gradient(rgba(8,4,20,.32),rgba(12,6,30,.38)),url('https://i.postimg.cc/DfjgWdyn/wan-an-bi-zhi-an-se-xi-hua-hua-bi-zhi-1-bai-le-you-de-bai-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
+  --rp-clock-color:#f2eeff;
+  --rp-app-lbl:rgba(225,215,255,.95);
+  --rp-app-lbl-sh:0 1px 4px rgba(0,0,0,.85);
+  --rp-indicator:rgba(255,255,255,.22);
+  --rp-widget-bg:rgba(14,10,45,.82);
+  --rp-widget-bd:rgba(140,110,255,.18);
+  --rp-widget-color:#e8e0ff;
+  --rp-wd-fill:linear-gradient(90deg,#7c3aed,#a855f7);
+  --rp-nav-bg:rgba(12,6,30,.78);
+  --rp-nav-bd:rgba(168,85,247,.2);
+  --rp-nav-title:#e8e0ff;
+  --rp-nav-btn:#a78bfa;
+  --rp-msg-bg:transparent;
+  --rp-bubbles-bg:transparent;
+  --rp-sent-bg:linear-gradient(135deg,#5b21b6,#7c3aed);
+  --rp-recv-bg:rgba(40,28,90,.9);
+  --rp-recv-color:#ddd4ff;
+  --rp-composer-bg:rgba(10,8,30,.97);
+  --rp-composer-bd:rgba(140,110,255,.12);
+  --rp-input-bg:rgba(255,255,255,.06);
+  --rp-input-bd:rgba(140,110,255,.2);
+  --rp-input-color:#e0d8ff;
+  --rp-send-bg:linear-gradient(135deg,#6d28d9,#a855f7);
+  /* Shape & Animation */
+  --rp-ico-radius:8px;
+  --rp-ico-sh:0 2px 12px rgba(0,0,0,.6),0 0 0 1px rgba(140,110,255,.15);
+  --rp-ico-hover-sh:0 0 16px rgba(168,85,247,.7),0 0 0 1px rgba(168,85,247,.5);
+  --rp-ico-hover-lift:translateY(-1px) scale(1.04);
+  --rp-ico-active:scale(.88);
+  --rp-send-size:34px;
+  --rp-send-radius:8px;
+  --rp-send-sh:0 0 12px rgba(109,40,217,.6);
+  --rp-send-hover-sh:0 0 20px rgba(168,85,247,.85);
+  --rp-input-radius:8px;
+  --rp-input-sh:inset 0 0 0 1px rgba(140,110,255,.2);
+  --rp-input-focus-sh:0 0 0 2px rgba(168,85,247,.5),inset 0 0 8px rgba(140,110,255,.1);
+  --rp-bubble-radius:8px;
+  --rp-bubble-radius-out:8px 8px 2px 8px;
+  --rp-bubble-radius-in:8px 8px 8px 2px;
+  --rp-nav-btn-radius:6px;
+  --rp-nav-sh:0 1px 0 rgba(140,110,255,.15);
+  --rp-thread-radius:0px;
+  --rp-thread-mx:0px;
+  --rp-thread-sh:none;
+  --rp-moment-radius:0px;
+  --rp-widget-radius:10px;
+  --rp-widget-sh:0 0 20px rgba(109,40,217,.3),0 0 0 1px rgba(140,110,255,.2);
+  --rp-transition:transform .08s ease, box-shadow .08s ease;
+  --rp-themes-bg:transparent;
+  --rp-themes-label:#c8b4ff;
+  --rp-tc-bg:rgba(20,14,55,.9);
+  --rp-threads-bg:transparent;
+  --rp-thread-bd:rgba(140,110,255,.1);
+  --rp-thread-hover:rgba(255,255,255,.03);
+  --rp-tn-color:#e0d8ff;
+  --rp-tp-color:rgba(180,165,255,.5);
+  --rp-tt-color:rgba(180,165,255,.4);
+  --rp-hd-name:rgba(180,165,255,.7);
+  --rp-bts-color:rgba(180,165,255,.35);
+  --rp-moments-bg:transparent;
+  --rp-moment-card:rgba(20,14,55,.9);
+  --rp-moment-name:#a78bfa;
+  --rp-moment-text:#d5ccff;
+  --rp-moment-bd:rgba(140,110,255,.1);
+}
+
+/* ── Misty Blue Theme ── */
+#rp-phone.rp-theme-misty {
+  --rp-frame-bg:linear-gradient(160deg,#e0f0ff,#c0d8f0);
+  --rp-frame-sh:0 0 0 1.5px rgba(140,175,210,.3),0 0 0 1.5px rgba(140,175,210,.15),0 36px 80px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.6);
+  --rp-btn-bg:#a8c8e8;
+  --rp-island-bg:#0d2236;
+  --rp-island-ring:#1a3a5a;
+  --rp-screen-bg:transparent;
+  --rp-sbar-color:#1a4a7a;
+  --rp-bat-border:rgba(26,74,122,.5);
+  --rp-bat-nub:rgba(26,74,122,.4);
+  --rp-lock-wall:linear-gradient(rgba(200,220,240,.08),rgba(180,205,230,.10)),url('https://i.postimg.cc/nLwzZd2w/blue-misty-wallpaper.jpg') center/cover no-repeat;
+  --rp-lock-color:#0d2236;
+  --rp-lock-time:#1a4a7a;
+  --rp-swipe-color:rgba(26,74,122,.35);
+  --rp-ln-bg:rgba(235,248,255,.88);
+  --rp-ln-bd:rgba(140,175,210,.15);
+  --rp-ln-text:rgba(13,34,54,.88);
+  --rp-home-wall:linear-gradient(rgba(200,220,240,.06),rgba(180,205,230,.08)),url('https://i.postimg.cc/nLwzZd2w/blue-misty-wallpaper.jpg') center/cover no-repeat;
+  --rp-clock-color:#1a4a7a;
+  --rp-app-lbl:rgba(13,34,54,.92);
+  --rp-app-lbl-sh:0 1px 5px rgba(255,255,255,.7);
+  --rp-indicator:rgba(26,74,122,.3);
+  --rp-widget-bg:rgba(235,248,255,.7);
+  --rp-widget-bd:rgba(140,175,210,.18);
+  --rp-widget-color:#0d2236;
+  --rp-wd-fill:linear-gradient(90deg,#3b82f6,#0ea5e9);
+  --rp-nav-bg:rgba(235,248,255,.75);
+  --rp-nav-bd:rgba(140,175,210,.25);
+  --rp-nav-title:#0d2236;
+  --rp-nav-btn:#0ea5e9;
+  --rp-msg-bg:transparent;
+  --rp-bubbles-bg:transparent;
+  --rp-sent-bg:#3b82f6;
+  --rp-recv-bg:#e8f4fc;
+  --rp-recv-color:#0d2236;
+  --rp-composer-bg:rgba(235,248,255,.85);
+  --rp-composer-bd:rgba(140,175,210,.22);
+  --rp-input-bg:rgba(13,34,54,.05);
+  --rp-input-bd:rgba(140,175,210,.25);
+  --rp-input-color:#0d2236;
+  --rp-send-bg:linear-gradient(135deg,#3b82f6,#0ea5e9);
+  --rp-ico-radius:10px;
+  --rp-ico-sh:0 2px 10px rgba(26,74,122,.18);
+  --rp-ico-hover-sh:0 6px 18px rgba(14,165,233,.25);
+  --rp-ico-hover-lift:translateY(-1.5px) scale(1.05);
+  --rp-ico-active:scale(.86);
+  --rp-send-size:34px;
+  --rp-send-radius:10px;
+  --rp-send-sh:0 2px 8px rgba(59,130,246,.3);
+  --rp-send-hover-sh:0 4px 14px rgba(14,165,233,.45);
+  --rp-input-radius:12px;
+  --rp-input-sh:none;
+  --rp-input-focus-sh:0 0 0 2.5px rgba(59,130,246,.12);
+  --rp-bubble-radius:12px;
+  --rp-bubble-radius-out:12px 12px 4px 12px;
+  --rp-bubble-radius-in:12px 12px 12px 4px;
+  --rp-nav-btn-radius:4px;
+  --rp-nav-sh:0 1px 0 rgba(140,175,210,.18);
+  --rp-thread-radius:0px;
+  --rp-thread-mx:0px;
+  --rp-thread-sh:none;
+  --rp-moment-radius:0px;
+  --rp-widget-radius:14px;
+  --rp-widget-sh:0 2px 14px rgba(59,130,246,.12);
+  --rp-transition:transform .1s ease, box-shadow .1s ease;
+  --rp-themes-bg:transparent;
+  --rp-themes-label:#1a4a7a;
+  --rp-tc-bg:rgba(235,248,255,.9);
+  --rp-threads-bg:transparent;
+  --rp-thread-bd:rgba(140,175,210,.12);
+  --rp-thread-hover:rgba(26,74,122,.04);
+  --rp-tn-color:#0d2236;
+  --rp-tp-color:rgba(26,74,122,.55);
+  --rp-tt-color:rgba(26,74,122,.45);
+  --rp-hd-name:rgba(26,74,122,.65);
+  --rp-bts-color:rgba(26,74,122,.45);
+  --rp-moments-bg:transparent;
+  --rp-moment-card:rgba(235,248,255,.9);
+  --rp-moment-name:#3b82f6;
+  --rp-moment-text:#0d2236;
+  --rp-moment-bd:rgba(140,175,210,.12);
 }
 
 /* ── frame (iPhone 15 Pro) ── */
@@ -225,17 +412,19 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   overflow: hidden;
   flex-shrink: 0;
 }
+/* 红色删除按钮层（藏在右侧，初始宽度0隐藏，避免透出） */
 .rp-ln-del-btn {
   position: absolute;
   right: 0; top: 0; bottom: 0;
   width: 72px;
   background: #ff3b30;
-  display: flex; align-items:center; justify-content:center;
+  display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 12px; font-weight: 700;
   cursor: pointer;
   border-radius: 0 14px 14px 0;
   user-select: none;
   z-index: 1;
+  /* 初始完全隐藏，仅在父容器有 rp-ln-wrap-active 时显示 */
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.18s ease;
@@ -244,6 +433,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   opacity: 1;
   pointer-events: auto;
 }
+/* 通知内容卡片（可左滑） */
 .rp-ln {
   position: relative;
   z-index: 2;
@@ -251,6 +441,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   border:1px solid var(--rp-ln-bd); border-radius:14px;
   padding:10px 14px; display:flex; flex-direction:column; gap:4px;
   box-shadow:0 2px 8px rgba(0,0,0,.08);
+  /* 使用 GPU 加速动画，提升 PC 端流畅度 */
   transition: transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   will-change: transform;
   transform: translateZ(0);
@@ -329,6 +520,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   position:relative; height:100%;
   overflow:hidden;
 }
+/* 页面指示点 */
 #rp-home-dots {
   position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
   display:flex; gap:6px; z-index:10;
@@ -342,549 +534,27 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   background:var(--rp-clock-color,#e06080);
   transform:scale(1.25);
 }
-
-/* ── MESSAGES VIEW ── */
-#rp-view-messages { background:transparent !important; display:flex; flex-direction:column; }
-#rp-thread-list { flex:1; overflow-y:auto; scrollbar-width:none; }
-#rp-thread-list::-webkit-scrollbar { display:none; }
-
-.rp-thread {
-  display:flex; align-items:center; gap:12px;
-  padding:11px 16px; border-bottom:1px solid var(--rp-thread-bd);
-  cursor:pointer; transition:background .12s;
-}
-.rp-thread:hover { background:var(--rp-thread-hover); }
-
-.rp-av { width:46px; height:46px; border-radius:23px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; }
-.rp-ti { flex:1; min-width:0; }
-.rp-tn { font-size:14px; font-weight:600; color:var(--rp-tn-color); }
-.rp-tp { font-size:12px; color:var(--rp-tp-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
-.rp-tm { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
-.rp-tt { font-size:11px; color:var(--rp-tt-color); }
-.rp-tbadge { background:#2563eb; color:#fff; font-size:10px; font-weight:700; min-width:19px; height:19px; border-radius:10px; padding:0 5px; display:flex; align-items:center; justify-content:center; }
-
-/* ── THREAD VIEW ── */
-#rp-view-thread { background:transparent !important; display:flex; flex-direction:column; }
-
-/* bubbles */
-#rp-bubbles { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:3px; scrollbar-width:none; }
-#rp-bubbles::-webkit-scrollbar { display:none; }
-
-/* Pending queue */
-#rp-pending-queue {
-  padding:6px 12px 4px;
-  display:flex; flex-direction:column; gap:3px;
-  flex-shrink:0;
-  max-height:76px; overflow-y:auto;
-  border-top:1px solid rgba(37,99,235,.15);
-  background:rgba(37,99,235,.04);
-  scrollbar-width:none;
-}
-#rp-pending-queue::-webkit-scrollbar { display:none; }
-.rp-pending-item {
-  font-size:11px; color:#1d4ed8;
-  background:rgba(37,99,235,.1);
-  border-radius:8px; padding:3px 10px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.rp-pending-hint {
-  font-size:10px; color:rgba(0,0,0,.35);
-  text-align:center; padding:1px 0 2px;
-}
-
-.rp-bwrap { display:flex; flex-direction:column; gap:2px; }
-.rp-out { align-items:flex-end; }
-.rp-in  { align-items:flex-start; }
-.rp-btn-row { display:flex; flex-direction:row; align-items:center; gap:2px; }
-.rp-bubble { max-width:72%; padding:9px 13px; border-radius:19px; font-size:13px; line-height:1.45; word-break:break-word; }
-.rp-sent { background:var(--rp-sent-bg); color:#fff; border-radius:var(--rp-bubble-radius-out); }
-.rp-recv { background:var(--rp-recv-bg); color:var(--rp-recv-color); border-radius:var(--rp-bubble-radius-in); }
-.rp-bts  { font-size:10px; color:var(--rp-bts-color); padding:0 4px; }
-
-/* composer */
-#rp-composer {
-  display:flex !important;
-  align-items:center !important;
-  gap:8px !important;
-  padding:8px 12px 22px !important;
-  border-top:1px solid var(--rp-composer-bd) !important;
-  flex-shrink:0 !important;
-  background:var(--rp-composer-bg) !important;
-}
-#rp-input {
-  flex:1 !important;
-  background:var(--rp-input-bg) !important;
-  border:1px solid var(--rp-input-bd) !important;
-  border-radius:var(--rp-input-radius) !important;
-  padding:9px 16px !important;
-  color:var(--rp-input-color) !important;
-  box-shadow:var(--rp-input-sh) !important;
-  transition:box-shadow .18s ease, border-color .18s ease !important;
-  font-size:13px !important;
-  outline:none !important;
-  font-family:inherit !important;
-  min-width:0 !important;
-  box-sizing:border-box !important;
-}
-#rp-input::placeholder { color:rgba(0,0,0,.4); }
-#rp-input:focus { box-shadow:var(--rp-input-focus-sh) !important; border-color:rgba(0,0,0,.3) !important; }
-
-#rp-send {
-  width:var(--rp-send-size) !important;
-  height:var(--rp-send-size) !important;
-  min-width:var(--rp-send-size) !important;
-  border-radius:var(--rp-send-radius) !important;
-  background:var(--rp-send-bg) !important;
-  border:none !important;
-  color:#fff !important;
-  font-size:16px !important;
-  font-weight:700 !important;
-  cursor:pointer !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  flex-shrink:0 !important;
-  box-shadow:var(--rp-send-sh) !important;
-  transition:var(--rp-transition), opacity .15s !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  pointer-events:auto !important;
-  padding:0 !important;
-  margin:0 !important;
-  line-height:1 !important;
-  box-shadow:none !important;
-  outline:none !important;
-}
-#rp-send:hover { opacity:.92 !important; box-shadow:var(--rp-send-hover-sh) !important; transform:scale(1.06) !important; }
-
-/* ── NAV BAR (共用) ── */
-.rp-nav-bar {
-  height:92px; padding-top:46px; flex-shrink:0;
-  display:flex; align-items:center; justify-content:space-between;
-  padding-left:6px; padding-right:16px;
-  position:relative;
-  background:transparent;
-  border-bottom:1px solid transparent;
-}
-
-.rp-nav-title {position:absolute;left:0;right:0;text-align:center;pointer-events:none;font-size:16px;font-weight:600;color:var(--rp-nav-title);}
-.rp-back {
-  background:none !important; border:none !important;
-  color:var(--rp-nav-btn) !important; font-size:30px !important;
-  line-height:1 !important; cursor:pointer !important;
-  padding:0 6px !important; font-family:inherit !important;
-  display:inline-flex !important; visibility:visible !important;
-  opacity:1 !important; pointer-events:auto !important;
-}
-.rp-nav-add {
-  background:none !important; border:none !important;
-  color:var(--rp-nav-btn) !important; font-size:28px !important;
-  line-height:1 !important; cursor:pointer !important;
-  padding:0 6px !important; font-family:inherit !important;
-  font-weight:300 !important; display:inline-flex !important;
-  visibility:visible !important; opacity:1 !important; pointer-events:auto !important;
-}
-.rp-thread-hd { display:flex; flex-direction:column; align-items:center; gap:4px; }
-.rp-hd-av { width:32px; height:32px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; }
-.rp-hd-name { font-size:11px; color:var(--rp-hd-name); }
-
-/* ── ADD CONTACT MODAL ── */
-#rp-add-modal {
-  position:absolute; inset:0; z-index:600;
-  background:rgba(0,0,0,.4); backdrop-filter:blur(8px);
-  display:flex; align-items:center; justify-content:center;
-  padding:20px;
-}
-#rp-add-form {
-  background:#fff; border-radius:18px;
-  padding:20px; width:100%; max-width:240px;
-  box-shadow:0 12px 40px rgba(0,0,0,.3);
-}
-#rp-add-form h3 {
-  margin:0 0 16px; font-size:18px; font-weight:600; color:#000; text-align:center;
-}
-#rp-add-form input {
-  width:100%; padding:10px 12px; margin-bottom:12px;
-  border:1px solid rgba(0,0,0,.15); border-radius:10px;
-  font-size:14px; font-family:inherit; color:#000;
-  background:rgba(0,0,0,.02); outline:none; box-sizing:border-box;
-}
-#rp-add-form input::placeholder { color:rgba(0,0,0,.4); }
-#rp-add-btns {
-  display:flex; gap:10px; margin-top:16px;
-}
-#rp-add-btns button {
-  flex:1 !important; padding:10px !important; border:none !important; border-radius:10px !important;
-  font-size:14px !important; font-weight:600 !important; cursor:pointer !important;
-  font-family:inherit !important; transition:opacity .15s;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  visibility:visible !important; opacity:1 !important; pointer-events:auto !important;
-}
-#rp-add-btns button:hover { opacity:.8 !important; }
-#rp-add-cancel { background:#e9ecef !important; color:#000 !important; }
-#rp-add-confirm { background:#2563eb !important; color:#fff !important; }
-
-/* ── NOTIFICATION BANNER ── */
-#rp-notif-banner {
-  position:absolute; top:52px; left:10px; right:10px;
-  background:rgba(255,255,255,.95); backdrop-filter:blur(24px);
-  border:1px solid rgba(0,0,0,.08); border-radius:15px;
-  padding:11px 13px; display:flex; align-items:center; gap:10px;
-  z-index:500; box-shadow:0 6px 24px rgba(0,0,0,.2);
-  transform:translateY(-130%); transition:transform .38s cubic-bezier(.34,1.56,.64,1);
-}
-#rp-notif-banner.rp-nb-in { transform:translateY(0); }
-.rp-nb-ico { font-size:22px; flex-shrink:0; }
-.rp-nb-body { flex:1; min-width:0; }
-.rp-nb-from { font-size:11px; font-weight:600; color:rgba(0,0,0,.5); }
-.rp-nb-text { font-size:13px; color:#000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rp-nb-time { font-size:11px; color:rgba(0,0,0,.4); align-self:flex-start; flex-shrink:0; }
-
-/* ── home indicator ── */
-#rp-home-ind { position:absolute; bottom:7px; left:50%; transform:translateX(-50%); width:90px; height:4px; background:rgba(0,0,0,.25); border-radius:2px; z-index:300; }
-
-/* ── DARK FRAME ── */
-.rp-dark #rp-frame{background:linear-gradient(160deg,#1e1e1e,#101010);box-shadow:0 0 0 1.5px rgba(255,255,255,.06),0 0 0 9px #0c0c0c,0 0 0 10px rgba(255,255,255,.04),0 36px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06)}
-.rp-dark .rp-btn{background:#2c2c2c}
-.rp-dark #rp-screen{background:var(--rp-home-wall);background-size:cover;background-position:center}
-.rp-dark #rp-island{background:#0a0a0a}
-.rp-dark .rp-lock-bg{background:radial-gradient(ellipse 120% 80% at 30% 15%,rgba(80,60,200,.35),transparent 55%),radial-gradient(ellipse 100% 80% at 80% 85%,rgba(40,60,200,.25),transparent 55%),linear-gradient(180deg,#0c0c1a,#08080f,#0c0c1a)}
-.rp-dark .rp-lock-body{color:#e0e2f0}
-.rp-dark #rp-lock-time{color:#eef0ff}
-.rp-dark #rp-lock-date{display:none!important}
-.rp-dark .rp-ln{background:rgba(12,12,24,.88);border-color:rgba(255,255,255,.07)}
-.rp-dark .rp-ln-type{color:rgba(160,175,255,.45)}
-.rp-dark .rp-ln-text{color:rgba(210,218,255,.85)}
-.rp-dark #rp-swipe-hint{color:rgba(180,195,255,.3)}
-.rp-dark #rp-sbar{color:#dde0f2}
-.rp-dark .rp-home-bg{background:radial-gradient(ellipse 100% 70% at 20% 10%,rgba(50,60,140,.38),transparent 50%),radial-gradient(ellipse 100% 70% at 80% 90%,rgba(30,50,130,.28),transparent 50%),linear-gradient(170deg,#0c0c1a,#090912,#0c0c1a)}
-.rp-dark #rp-home-clock{color:#eef0ff}
-.rp-dark .rp-app-lbl{color:rgba(210,218,255,.88);text-shadow:0 1px 3px rgba(0,0,0,.7)}
-.rp-dark .rp-app-ico{box-shadow:0 2px 10px rgba(0,0,0,.5)}
-.rp-dark .rp-app-off{opacity:.2}
-.rp-dark #rp-widget{background:rgba(12,12,24,.78);border-color:rgba(255,255,255,.07);box-shadow:0 2px 12px rgba(0,0,0,.4)}
-
-/* ── Base: remove all hardcoded inline bg on icons ── */
-#rp-phone .rp-app-ico {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  font-size: 28px !important;
-  transition: transform .14s ease, filter .14s ease !important;
-  filter: drop-shadow(0 1px 4px rgba(0,0,0,.35)) !important;
-  color: var(--rp-clock-color) !important;
-}
-#rp-phone .rp-app-ico:active { transform: scale(.88) !important; }
-
-/* ══ 🌸 CANDY: PINK BUBBLES ══ */
-#rp-phone.rp-theme-candy .rp-app-ico {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  font-size: 26px !important;
-  filter: drop-shadow(0 1px 4px rgba(200,60,90,.55)) drop-shadow(0 0 6px rgba(255,255,255,.6)) !important;
-}
-#rp-phone.rp-theme-candy .rp-app-ico:active {
-  transform: scale(.88) !important;
-  box-shadow: 0 3px 10px rgba(200,100,140,.3), inset 0 1px 0 rgba(255,255,255,.6) !important;
-}
-#rp-phone.rp-theme-candy .rp-app-lbl {
-  color: #7a1038 !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  text-shadow: 0 1px 4px rgba(255,255,255,.7);
-}
-#rp-phone.rp-theme-candy #rp-widget {
-  background: rgba(255,228,238,.62) !important;
-  border: 1.5px solid rgba(220,130,165,.28) !important;
-  box-shadow: 0 8px 28px rgba(200,100,140,.18), inset 0 1px 0 rgba(255,255,255,.7) !important;
-  border-radius: 22px !important;
-}
-#rp-phone.rp-theme-candy #rp-home-clock {
-  color: #c03060 !important;
-  font-weight: 200 !important;
-  font-size: 58px !important;
-  letter-spacing: -3px !important;
-  text-shadow:
-    0 0 28px rgba(255,255,255,.92),
-    0 0 10px rgba(255,255,255,.7),
-    0 2px 6px rgba(255,255,255,.4) !important;
-}
-#rp-phone.rp-theme-candy .rp-nav-bar {
-  background: transparent !important;
-  border-bottom: 1px solid rgba(220,130,165,.15) !important;
-}
-#rp-phone.rp-theme-candy #rp-send {
-  background: linear-gradient(135deg, #e8648a, #f472b6) !important;
-  border-radius: 50% !important;
-  box-shadow: 0 4px 16px rgba(220,80,130,.35) !important;
-}
-#rp-phone.rp-theme-candy #rp-input {
-  border-color: rgba(220,130,165,.35) !important;
-  border-radius: 20px !important;
-}
-#rp-phone.rp-theme-candy .rp-av {
-  border-radius: 50% !important;
-  box-shadow: 0 3px 12px rgba(200,100,140,.2) !important;
-}
-#rp-phone:not(.rp-theme-star):not(.rp-theme-misty) .rp-sent,
-#rp-phone.rp-theme-candy .rp-sent {
-  background: linear-gradient(135deg,#ff7fb1 0%, #f06292 48%, #e34a86 100%) !important;
-  border: 1px solid rgba(255,255,255,.42) !important;
-  box-shadow: 0 4px 12px rgba(198,64,116,.34), inset 0 1px 0 rgba(255,255,255,.36) !important;
-  color:#fff !important;
-}
-#rp-phone:not(.rp-theme-star):not(.rp-theme-misty) .rp-out .rp-bts,
-#rp-phone.rp-theme-candy .rp-out .rp-bts {
-  color: rgba(126, 34, 78, .58) !important;
-}
-
-/* ══ ✨ STAR: DARK TECH CHIPS ══ */
-#rp-phone.rp-theme-star .rp-app-ico {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  font-size: 24px !important;
-  filter: drop-shadow(0 0 6px rgba(160,130,255,.7)) drop-shadow(0 1px 3px rgba(0,0,0,.5)) !important;
-}
-#rp-phone.rp-theme-star .rp-app-ico:active {
-  transform: scale(.9) !important;
-  box-shadow: 0 0 20px rgba(140,80,255,.5), 0 2px 8px rgba(0,0,0,.7) !important;
-}
-#rp-phone.rp-theme-star .rp-app-lbl {
-  color: rgba(210,195,255,.9) !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  text-shadow: 0 0 8px rgba(140,80,255,.6);
-}
-#rp-phone.rp-theme-star #rp-widget {
-  background: rgba(14,8,40,.88) !important;
-  border: 1px solid rgba(150,100,255,.35) !important;
-  box-shadow: 0 0 20px rgba(100,50,220,.25), 0 8px 32px rgba(0,0,0,.7) !important;
-  border-radius: 14px !important;
-}
-#rp-phone.rp-theme-star #rp-home-clock {
-  color: #d4ccff !important;
-  font-weight: 100 !important;
-  text-shadow: 0 0 30px rgba(140,100,255,.4) !important;
-}
-#rp-phone.rp-theme-star .rp-nav-bar {
-  background: transparent !important;
-  border-bottom: 1px solid rgba(150,100,255,.15) !important;
-}
-#rp-phone.rp-theme-star #rp-send {
-  background: linear-gradient(135deg, #6d28d9, #8b5cf6) !important;
-  border-radius: 10px !important;
-  box-shadow: 0 0 14px rgba(120,60,255,.5) !important;
-}
-#rp-phone.rp-theme-star #rp-input {
-  border-color: rgba(150,100,255,.4) !important;
-  border-radius: 8px !important;
-  background: rgba(20,12,50,.6) !important;
-  color: #e0d4ff !important;
-}
-#rp-phone.rp-theme-star .rp-av {
-  border-radius: 10px !important;
-  box-shadow: 0 0 8px rgba(120,60,255,.25) !important;
-}
-
-/* ══ 🌿 MISTY: WATERCOLOR OVALS ══ */
-#rp-phone.rp-theme-misty .rp-app-ico {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  filter: drop-shadow(0 1px 3px rgba(0,20,60,.45)) drop-shadow(0 0 5px rgba(0,10,40,.25)) !important;
-}
-#rp-phone.rp-theme-misty .rp-app-ico:active {
-  transform: scale(.9) !important;
-  box-shadow: 0 3px 12px rgba(100,145,195,.25), inset 0 1px 0 rgba(255,255,255,.5) !important;
-}
-#rp-phone.rp-theme-misty .rp-app-lbl {
-  color: rgba(218,238,253,.91) !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  text-shadow: 0 1px 3px rgba(0,20,60,.58), 0 0 6px rgba(0,10,40,.38) !important;
-}
-#rp-phone.rp-theme-misty #rp-widget {
-  background: rgba(240,248,255,.62) !important;
-  border: 1.5px solid rgba(130,175,215,.3) !important;
-  box-shadow: 0 8px 28px rgba(100,145,195,.15), inset 0 1px 0 rgba(255,255,255,.7) !important;
-  border-radius: 22px !important;
-}
-#rp-phone.rp-theme-misty #rp-home-clock {
-  color: rgba(220,238,252,.92) !important;
-  font-weight: 100 !important;
-  letter-spacing: -2px !important;
-  text-shadow: 0 1px 6px rgba(0,20,60,.45), 0 2px 16px rgba(0,10,40,.25) !important;
-}
-#rp-phone.rp-theme-misty .rp-nav-bar {
-  background: transparent !important;
-  border-bottom: 1px solid rgba(130,175,215,.2) !important;
-}
-#rp-phone.rp-theme-misty #rp-send {
-  background: linear-gradient(135deg, #4d8fbf, #2d6d9a) !important;
-  border-radius: 20px 14px 14px 20px !important;
-  box-shadow: 0 4px 14px rgba(70,120,180,.3) !important;
-}
-#rp-phone.rp-theme-misty #rp-input {
-  border-color: rgba(130,175,215,.35) !important;
-  border-radius: 16px !important;
-}
-#rp-phone.rp-theme-misty .rp-av {
-  border-radius: 20px !important;
-  box-shadow: 0 3px 12px rgba(100,145,195,.2) !important;
-}
-
-/* Pending queue readability (all themes) */
-#rp-phone.rp-theme-candy #rp-pending-queue {
-  background: rgba(255, 234, 244, .82) !important;
-  border-top-color: rgba(188, 68, 118, .42) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-#rp-phone.rp-theme-candy .rp-pending-item {
-  color: #7a163f !important;
-  background: rgba(255, 255, 255, .74) !important;
-  font-weight: 600 !important;
-}
-#rp-phone.rp-theme-candy .rp-pending-hint {
-  color: rgba(108, 18, 56, .92) !important;
-  font-weight: 600 !important;
-}
-
-#rp-phone.rp-theme-star #rp-pending-queue {
-  background: rgba(18, 10, 48, .72) !important;
-  border-top-color: rgba(148, 110, 255, .35) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-#rp-phone.rp-theme-star .rp-pending-item {
-  color: #e4d8ff !important;
-  background: rgba(126, 84, 255, .28) !important;
-}
-#rp-phone.rp-theme-star .rp-pending-hint {
-  color: rgba(224, 208, 255, .72) !important;
-}
-
-#rp-phone.rp-theme-misty #rp-pending-queue {
-  background: rgba(228, 241, 252, .72) !important;
-  border-top-color: rgba(96, 146, 186, .32) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-#rp-phone.rp-theme-misty .rp-pending-item {
-  color: #1f4a6a !important;
-  background: rgba(255, 255, 255, .58) !important;
-}
-#rp-phone.rp-theme-misty .rp-pending-hint {
-  color: rgba(35, 77, 110, .78) !important;
-}
-
-/* ── SHARED: icon grid spacing & app grid for icon-only style ── */
-#rp-phone #rp-app-grid { gap: 16px !important; }
-
-/* ── Star Night Theme ── */
-#rp-phone.rp-theme-star {
-  --rp-frame-bg:linear-gradient(160deg,#2c1070,#1a0850);
-  --rp-frame-sh:0 0 0 1.5px rgba(100,60,200,.3),0 0 0 1.5px rgba(100,60,200,.15),0 36px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(120,80,255,.2);
-  --rp-btn-bg:#3a1a80;
-  --rp-island-bg:#0a0620;
-  --rp-island-ring:#0e0a30;
-  --rp-screen-bg:transparent;
-  --rp-sbar-color:#c8c0f5;
-  --rp-bat-border:rgba(180,160,255,.4);
-  --rp-bat-nub:rgba(180,160,255,.3);
-  --rp-lock-wall:linear-gradient(rgba(8,4,20,.35),rgba(12,6,30,.4)),url('https://i.postimg.cc/DfjgWdyn/wan-an-bi-zhi-an-se-xi-hua-hua-bi-zhi-1-bai-le-you-de-bai-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
-  --rp-lock-color:#e8e0ff;
-  --rp-lock-time:#f2eeff;
-  --rp-swipe-color:rgba(180,160,255,.3);
-  --rp-ln-bg:rgba(15,10,42,.88);
-  --rp-ln-bd:rgba(150,120,255,.12);
-  --rp-ln-text:rgba(220,210,255,.85);
-  --rp-home-wall:linear-gradient(rgba(8,4,20,.32),rgba(12,6,30,.38)),url('https://i.postimg.cc/DfjgWdyn/wan-an-bi-zhi-an-se-xi-hua-hua-bi-zhi-1-bai-le-you-de-bai-lai-zi-xiao-hong-shu-wang-ye-ban.jpg') center/cover no-repeat;
-  --rp-clock-color:#f2eeff;
-  --rp-app-lbl:rgba(225,215,255,.95);
-  --rp-app-lbl-sh:0 1px 4px rgba(0,0,0,.85);
-  --rp-indicator:rgba(255,255,255,.22);
-  --rp-widget-bg:rgba(14,10,45,.82);
-  --rp-widget-bd:rgba(140,110,255,.18);
-  --rp-widget-color:#e8e0ff;
-  --rp-wd-fill:linear-gradient(90deg,#7c3aed,#a855f7);
-  --rp-nav-bg:rgba(12,6,30,.78);
-  --rp-nav-bd:rgba(168,85,247,.2);
-  --rp-nav-title:#e8e0ff;
-  --rp-nav-btn:#a78bfa;
-  --rp-msg-bg:transparent;
-  --rp-bubbles-bg:transparent;
-  --rp-sent-bg:linear-gradient(135deg,#5b21b6,#7c3aed);
-  --rp-recv-bg:rgba(40,28,90,.9);
-  --rp-recv-color:#ddd4ff;
-  --rp-composer-bg:rgba(10,8,30,.97);
-  --rp-composer-bd:rgba(140,110,255,.12);
-  --rp-input-bg:rgba(255,255,255,.06);
-  --rp-input-bd:rgba(140,110,255,.2);
-  --rp-input-color:#e0d8ff;
-  --rp-send-bg:linear-gradient(135deg,#6d28d9,#a855f7);
-  --rp-ico-radius:8px;
-  --rp-ico-sh:0 2px 12px rgba(0,0,0,.6),0 0 0 1px rgba(140,110,255,.15);
-  --rp-ico-hover-sh:0 0 16px rgba(168,85,247,.7),0 0 0 1px rgba(168,85,247,.5);
-  --rp-ico-hover-lift:translateY(-1px) scale(1.04);
-  --rp-ico-active:scale(.88);
-  --rp-send-size:34px;
-  --rp-send-radius:8px;
-  --rp-send-sh:0 0 12px rgba(109,40,217,.6);
-  --rp-send-hover-sh:0 0 20px rgba(168,85,247,.85);
-  --rp-input-radius:8px;
-  --rp-input-sh:inset 0 0 0 1px rgba(140,110,255,.2);
-  --rp-input-focus-sh:0 0 0 2px rgba(168,85,247,.5),inset 0 0 8px rgba(140,110,255,.1);
-  --rp-bubble-radius:8px;
-  --rp-bubble-radius-out:8px 8px 2px 8px;
-  --rp-bubble-radius-in:8px 8px 8px 2px;
-  --rp-nav-btn-radius:6px;
-  --rp-nav-sh:0 1px 0 rgba(140,110,255,.15);
-  --rp-thread-radius:0px;
-  --rp-thread-mx:0px;
-  --rp-thread-sh:none;
-  --rp-moment-radius:0px;
-  --rp-widget-radius:10px;
-  --rp-widget-sh:0 0 20px rgba(109,40,217,.3),0 0 0 1px rgba(140,110,255,.2);
-  --rp-transition:transform .08s ease, box-shadow .08s ease;
-  --rp-themes-bg:transparent;
-  --rp-themes-label:#c8b4ff;
-  --rp-tc-bg:rgba(20,14,55,.9);
-  --rp-threads-bg:transparent;
-  --rp-thread-bd:rgba(140,110,255,.1);
-  --rp-thread-hover:rgba(255,255,255,.03);
-  --rp-tn-color:#e0d8ff;
-  --rp-tp-color:rgba(180,165,255,.5);
-  --rp-tt-color:rgba(180,165,255,.4);
-  --rp-hd-name:rgba(180,165,255,.7);
-  --rp-bts-color:rgba(180,165,255,.35);
-  --rp-moments-bg:transparent;
-  --rp-moment-card:rgba(20,14,55,.9);
-  --rp-moment-name:#a78bfa;
-  --rp-moment-text:#d5ccff;
-  --rp-moment-bd:rgba(140,110,255,.1);
-}
-
-/* ── about page ── */
+/* ── 关于页 ── */
 #rp-about-page {
   position:absolute; inset:0;
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
   padding:20px 24px 36px;
+  /* 默认主题(Candy) token */
   --rp-about-card-bg: rgba(255,240,245,.72);
   --rp-about-card-bd: rgba(224,96,128,.18);
   --rp-about-text: #7a2040;
   --rp-about-hl-color: #a01838;
   --rp-about-bg:var(--rp-screen-bg,#fff);
 }
+/* Star(深色)主题 */
 #rp-phone.rp-theme-star #rp-about-page {
   --rp-about-card-bg: rgba(14,10,45,.78);
   --rp-about-card-bd: rgba(168,85,247,.22);
   --rp-about-text: #e0d8ff;
   --rp-about-hl-color: #c8b4ff;
 }
+/* Misty主题 */
 #rp-phone.rp-theme-misty #rp-about-page {
   --rp-about-card-bg: rgba(235,248,255,.72);
   --rp-about-card-bd: rgba(140,175,210,.28);
@@ -896,6 +566,7 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   color:var(--rp-about-hl-color,#e06080);
   flex-shrink:0;
 }
+/* 内容卡片：只包文字，壁纸完整透出 */
 .rp-about-card {
   display:flex; flex-direction:column; align-items:center;
   padding:18px 28px 20px;
@@ -912,41 +583,368 @@ const RP_PHONE_CSS = `/* ── wrapper ── */
   color:var(--rp-about-hl-color,#a01838);
   text-shadow:none;
   margin-top:0; letter-spacing:.5px;
+  margin-bottom:8px;
 }
-#rp-about-author {
-  font-size:12px; font-weight:600;
+#rp-about-ver {
+  font-size:12px;
   color:var(--rp-about-text,#7a2040);
-  opacity:.75; margin-top:4px;
-  letter-spacing:.3px;
+  margin-bottom:16px;
+  opacity:.8;
 }
-#rp-about-divider {
-  width:48px; height:1px;
-  background:var(--rp-about-text,#7a2040);
-  opacity:.2; margin:12px 0;
-}
-#rp-about-notice {
-  font-size:11.5px; line-height:1.8;
+.rp-about-desc {
+  font-size:13px;
   color:var(--rp-about-text,#7a2040);
-  text-align:center; opacity:.9;
-  text-shadow:none;
+  line-height:1.7;
+  text-align:center;
+  max-width:220px;
 }
-.rp-about-hl {
-  font-weight:700;
-  color:var(--rp-about-hl-color,#a01838);
-  opacity:1;
+#rp-about-credit {
+  margin-top:16px;
+  padding-top:16px;
+  border-top:1px solid rgba(0,0,0,.08);
+  font-size:11px;
+  color:var(--rp-about-text,#7a2040);
+  opacity:.65;
 }
 
-/* ── LOCK SCREEN WIDGET ── */
-#rp-lock-widget {
-  position:absolute; bottom:80px; left:0; right:0;
-  display:flex; justify-content:center;
-  pointer-events:none;
+/* ── NAV BAR ── */
+#rp-nav {
+  position:absolute; top:0; left:0; right:0; height:48px;
+  background:var(--rp-nav-bg); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--rp-nav-bd);
+  display:flex; align-items:center; padding:0 12px 0 4px;
+  z-index:150; box-shadow:var(--rp-nav-sh);
+}
+#rp-nav-back {
+  width:32px; height:32px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--rp-nav-btn);
+  border-radius:var(--rp-nav-btn-radius);
+}
+#rp-nav-title {
+  flex:1; text-align:center;
+  font-size:15px; font-weight:600; color:var(--rp-nav-title);
+  padding:0 12px;
+}
+#rp-nav-action {
+  width:32px; height:32px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--rp-nav-btn);
+  border-radius:var(--rp-nav-btn-radius);
 }
 
-/* Hide scrollbars */
+/* ── SCROLL AREA ── */
+.rp-scroll {
+  position:absolute; inset:0;
+  overflow-y:auto; overflow-x:hidden;
+  padding-top:48px; padding-bottom:0;
+}
+
+/* ── THREAD LIST ── */
+.rp-thread {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; margin:0 10px;
+  border-radius:var(--rp-thread-radius);
+  background:var(--rp-threads-bg);
+  border-bottom:1px solid var(--rp-thread-bd);
+  cursor:pointer; transition:background .15s;
+}
+.rp-thread:hover { background:var(--rp-thread-hover); }
+.rp-thread-av { width:48px; height:48px; border-radius:20px; flex-shrink:0; object-fit:cover; background:#f0f0f5; }
+.rp-thread-info { flex:1; min-width:0; }
+.rp-thread-name { font-size:14px; font-weight:600; color:var(--rp-tn-color); margin-bottom:2px; }
+.rp-thread-preview { font-size:12px; color:var(--rp-tp-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rp-thread-time { font-size:11px; color:var(--rp-tt-color); white-space:nowrap; }
+.rp-thread-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.rp-thread-unread { font-size:10px; color:#fff; background:var(--rp-nav-btn); padding:2px 5px; border-radius:10px; min-width:18px; text-align:center; }
+
+/* ── CHAT VIEW ── */
+#rp-chat-header {
+  position:absolute; top:0; left:0; right:0; height:48px;
+  background:var(--rp-nav-bg); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--rp-nav-bd);
+  display:flex; align-items:center; padding:0 12px;
+  z-index:160;
+}
+#rp-chat-av { width:32px; height:32px; border-radius:14px; object-fit:cover; background:#f0f0f5; }
+#rp-chat-info { flex:1; padding:0 10px; min-width:0; }
+#rp-chat-name { font-size:14px; font-weight:600; color:var(--rp-nav-title); }
+#rp-chat-status { font-size:11px; color:rgba(0,0,0,.5); }
+
+#rp-chat-bubbles {
+  position:absolute; top:48px; left:0; right:0; bottom:70px;
+  overflow-y:auto; overflow-x:hidden;
+  padding:10px 12px;
+  background:var(--rp-bubbles-bg);
+}
+.rp-bubble-wrap {
+  display:flex; gap:6px; margin-bottom:8px;
+}
+.rp-bubble-wrap.sent { flex-direction:row-reverse; }
+.rp-bubble-av { width:28px; height:28px; border-radius:12px; flex-shrink:0; object-fit:cover; background:#f0f0f5; }
+.rp-bubble {
+  max-width:75%; padding:8px 11px;
+  border-radius:var(--rp-bubble-radius);
+  background:var(--rp-sent-bg);
+  color:#fff;
+  font-size:13px; line-height:1.45;
+  word-wrap:break-word;
+}
+.rp-bubble-wrap.received .rp-bubble {
+  background:var(--rp-recv-bg);
+  color:var(--rp-recv-color);
+  border-radius:var(--rp-bubble-radius);
+}
+.rp-bubble-time { font-size:10px; opacity:.55; margin-top:3px; text-align:right; }
+.rp-bubble-wrap.received .rp-bubble-time { text-align:left; }
+
+/* pending_image placeholder */
+.rp-bubble.pending_image {
+  min-width:80px; min-height:60px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--rp-recv-bg);
+  color:rgba(0,0,0,.4);
+  font-size:11px;
+  position:relative;
+  overflow:hidden;
+}
+.rp-bubble.pending_image::before {
+  content:'';
+  position:absolute; inset:0;
+  background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(0,0,0,.03) 10px,rgba(0,0,0,.03) 20px);
+  animation:rp-pending-scan 1.5s linear infinite;
+}
+@keyframes rp-pending-scan { from{transform:translateY(0)} to{transform:translateY(40px)} }
+
+/* ── COMPOSER ── */
+#rp-composer {
+  position:absolute; left:0; right:0; bottom:0; height:70px;
+  background:var(--rp-composer-bg); backdrop-filter:blur(20px);
+  border-top:1px solid var(--rp-composer-bd);
+  display:flex; align-items:center; gap:8px; padding:0 10px;
+  z-index:170;
+}
+#rp-compose-input {
+  flex:1; height:36px;
+  border-radius:var(--rp-input-radius);
+  background:var(--rp-input-bg);
+  border:1.5px solid var(--rp-input-bd);
+  color:var(--rp-input-color);
+  font-size:13px; padding:0 12px;
+  outline:none;
+  box-shadow:var(--rp-input-sh);
+}
+#rp-compose-input:focus { box-shadow:var(--rp-input-focus-sh); }
+#rp-compose-send {
+  width:var(--rp-send-size); height:var(--rp-send-size);
+  border-radius:var(--rp-send-radius);
+  background:var(--rp-send-bg);
+  border:none; color:#fff;
+  font-size:14px; cursor:pointer;
+  box-shadow:var(--rp-send-sh);
+  transition:all .2s;
+}
+#rp-compose-send:hover { box-shadow:var(--rp-send-hover-sh); transform:scale(1.05); }
+
+/* ── ATTACHMENT BUTTONS ── */
+#rp-attach-panel {
+  position:absolute; bottom:75px; left:12px; right:12px;
+  background:var(--rp-composer-bg); backdrop-filter:blur(20px);
+  border:1px solid var(--rp-composer-bd);
+  border-radius:12px;
+  padding:10px;
+  display:none; gap:10px;
+  box-shadow:0 4px 20px rgba(0,0,0,.15);
+}
+.rp-attach-btn {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; gap:6px;
+  padding:12px 6px;
+  border-radius:8px;
+  cursor:pointer; transition:background .2s;
+}
+.rp-attach-btn:hover { background:rgba(0,0,0,.05); }
+.rp-attach-btn span { font-size:12px; color:rgba(0,0,0,.7); }
+
+/* ── THEMES VIEW ── */
+#rp-themes-view {
+  padding:16px;
+  background:var(--rp-themes-bg);
+}
+.rp-themes-label {
+  font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--rp-themes-label); margin-bottom:12px;
+}
+.rp-theme-card {
+  display:flex; align-items:center; gap:12px;
+  padding:12px; margin-bottom:10px;
+  background:var(--rp-tc-bg);
+  border-radius:14px;
+  border:1.5px solid rgba(0,0,0,.06);
+  cursor:pointer;
+}
+.rp-theme-card:hover { border-color:var(--rp-nav-btn); }
+.rp-theme-preview { width:44px; height:44px; border-radius:10px; flex-shrink:0; }
+.rp-theme-info { flex:1; }
+.rp-theme-name { font-size:14px; font-weight:600; color:var(--rp-nav-title); }
+.rp-theme-desc { font-size:11px; color:rgba(0,0,0,.5); margin-top:2px; }
+
+/* ── SETTINGS VIEW ── */
+#rp-settings-view { padding:16px; }
+.rp-setting-group { margin-bottom:20px; }
+.rp-setting-label { font-size:12px; font-weight:600; color:rgba(0,0,0,.5); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
+.rp-setting-input {
+  width:100%; padding:8px 12px;
+  border:1.5px solid rgba(0,0,0,.12); border-radius:8px;
+  font-size:13px; outline:none;
+}
+.rp-setting-input:focus { border-color:var(--rp-nav-btn); }
+.rp-setting-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.rp-setting-desc { font-size:12px; color:rgba(0,0,0,.5); margin-top:4px; }
+.rp-setting-btn {
+  padding:8px 16px; background:var(--rp-nav-btn); color:#fff;
+  border:none; border-radius:8px; font-size:13px; cursor:pointer;
+}
+
+/* ── API SETTINGS VIEW ── */
+#rp-api-view { padding:16px; }
+.rp-api-section { margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid rgba(0,0,0,.08); }
+.rp-api-title { font-size:14px; font-weight:600; color:var(--rp-nav-title); margin-bottom:10px; }
+.rp-api-field { margin-bottom:12px; }
+.rp-api-label { font-size:12px; color:rgba(0,0,0,.6); margin-bottom:4px; }
+.rp-api-textarea {
+  width:100%; min-height:80px;
+  padding:8px 10px; border:1.5px solid rgba(0,0,0,.12);
+  border-radius:8px; font-size:12px;
+  resize:vertical; outline:none; font-family:monospace;
+}
+.rp-api-btn-row { display:flex; gap:8px; margin-top:8px; }
+.rp-api-btn {
+  flex:1; padding:8px 12px;
+  border-radius:6px; border:none;
+  font-size:12px; cursor:pointer;
+}
+.rp-api-primary { background:var(--rp-nav-btn); color:#fff; }
+.rp-api-secondary { background:rgba(0,0,0,.08); color:var(--rp-nav-title); }
+.rp-api-status {
+  padding:8px 12px; border-radius:6px;
+  font-size:11px; margin-top:8px;
+}
+.rp-api-status.success { background:rgba(52,199,89,.15); color:#34c759; }
+.rp-api-status.error { background:rgba(255,59,48,.15); color:#ff3b30; }
+
+/* ── MOMENTS VIEW ── */
+#rp-moments-view { padding:0; background:var(--rp-moments-bg); }
+.rp-moment { padding:16px 14px; background:var(--rp-moment-card); border-bottom:1px solid var(--rp-moment-bd); }
+.rp-moment-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.rp-moment-av { width:36px; height:36px; border-radius:14px; object-fit:cover; background:#f0f0f5; }
+.rp-moment-name { font-size:13px; font-weight:600; color:var(--rp-moment-name); }
+.rp-moment-time { font-size:11px; color:rgba(0,0,0,.4); margin-left:auto; }
+.rp-moment-text { font-size:13px; color:var(--rp-moment-text); line-height:1.5; margin-bottom:8px; }
+.rp-moment-img { width:100%; border-radius:8px; margin-bottom:8px; object-fit:cover; max-height:220px; }
+.rp-moment-actions { display:flex; gap:16px; margin-top:8px; }
+.rp-moment-action { display:flex; align-items:center; gap:4px; font-size:12px; color:rgba(0,0,0,.5); cursor:pointer; }
+.rp-moment-action:hover { color:var(--rp-moment-name); }
+.rp-moment-liked { color:var(--rp-moment-name); }
+
+/* ── DIARY VIEW ── */
+#rp-diary-view { padding:12px; }
+.rp-diary-entry { padding:12px; margin-bottom:10px; background:rgba(255,255,255,.6); border-radius:10px; border:1px solid rgba(0,0,0,.06); }
+.rp-diary-date { font-size:11px; color:rgba(0,0,0,.45); margin-bottom:4px; }
+.rp-diary-text { font-size:13px; color:rgba(0,0,0,.75); line-height:1.6; }
+.rp-diary-reply { margin-top:8px; padding:8px; background:rgba(37,99,235,.08); border-radius:8px; font-size:12px; color:rgba(37,99,235,.85); }
+
+/* ── XIAOHONGSHU VIEW ── */
+#rp-xhs-view { padding:12px; }
+.rp-xhs-card { margin-bottom:12px; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.rp-xhs-cover { width:100%; height:180px; object-fit:cover; }
+.rp-xhs-content { padding:10px; }
+.rp-xhs-title { font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.rp-xhs-author { display:flex; align-items:center; gap:6px; margin-top:8px; }
+.rp-xhs-author-av { width:20px; height:20px; border-radius:50%; background:#f0f0f5; }
+.rp-xhs-author-name { font-size:11px; color:rgba(0,0,0,.6); }
+.rp-xhs-meta { display:flex; gap:12px; margin-top:8px; font-size:11px; color:rgba(0,0,0,.45); }
+
+/* ── BANK VIEW ── */
+#rp-bank-view { padding:16px; }
+.rp-bank-card {
+  background:linear-gradient(135deg,#1a365d,#2c5282);
+  border-radius:16px; padding:20px; margin-bottom:16px;
+  color:#fff; box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.rp-bank-balance { font-size:28px; font-weight:700; margin:8px 0; }
+.rp-bank-label { font-size:11px; opacity:.7; }
+.rp-bank-amount { font-size:11px; }
+.rp-bank-income { color:#48bb78; }
+.rp-bank-expense { color:#f56565; }
+.rp-bank-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.1); }
+.rp-bank-row:last-child { border-bottom:none; }
+
+/* ── GAME 2048 VIEW ── */
+#rp-game-2048-view { padding:16px; display:flex; flex-direction:column; align-items:center; }
+.rp-game-2048-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  background:rgba(187,173,160,.3); padding:8px; border-radius:6px;
+  width:240px; height:240px;
+}
+.rp-game-2048-cell {
+  background:rgba(238,228,218,.35); border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; font-weight:700; color:#776e65;
+}
+.rp-game-2048-score { font-size:16px; font-weight:600; margin-bottom:12px; }
+
+/* ── GAME GOLD MINER VIEW ── */
+#rp-game-gold-view { position:relative; overflow:hidden; }
+.rp-game-canvas { display:block; width:100%; height:100%; }
+.rp-game-ui { position:absolute; top:48px; left:0; right:0; padding:10px; display:flex; justify-content:space-between; font-size:13px; font-weight:600; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.3); }
+
+/* ── GAME LUDO VIEW ── */
+#rp-game-ludo-view { position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.rp-ludo-board { width:260px; height:260px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.15); position:relative; }
+.rp-ludo-square { position:absolute; width:28px; height:28px; border-radius:6px; border:1px solid rgba(0,0,0,.08); display:flex; align-items:center; justify-content:center; font-size:10px; }
+.rp-ludo-safe { background:rgba(0,255,0,.1); }
+.rp-ludo-piece { width:22px; height:22px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,.2); }
+.rp-ludo-piece.user { background:#ef4444; }
+.rp-ludo-piece.char { background:#3b82f6; }
+.rp-ludo-dice { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); width:50px; height:50px; background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.15); display:flex; align-items:center; justify-content:center; font-size:28px; cursor:pointer; transition:transform .15s; }
+.rp-ludo-dice:active { transform:translateX(-50%) scale(.9); }
+
+/* ── OVERLAYS & DIALOGS ── */
+.rp-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.4);
+  display:none; align-items:center; justify-content:center;
+  z-index:10000;
+}
+.rp-dialog {
+  background:#fff; border-radius:16px;
+  padding:20px; width:80%; max-width:280px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.rp-dialog-title { font-size:16px; font-weight:600; margin-bottom:12px; }
+.rp-dialog-btn { padding:10px 20px; border-radius:8px; border:none; font-size:14px; cursor:pointer; width:100%; }
+.rp-dialog-primary { background:var(--rp-nav-btn); color:#fff; margin-top:8px; }
+
+/* ── SCROLLBAR ── */
+#rp-phone * { scrollbar-width: none !important; }
+#rp-phone *::-webkit-scrollbar { display: none !important; }
+#rp-phone *::-webkit-scrollbar-thumb { display: none !important; }
+#rp-phone *::-webkit-scrollbar-track { display: none !important; }
+
+#rp-phone * { -ms-overflow-style: none !important; }
 #rp-phone *::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
+
 `;
+
+export function injectStyles() {
+  if (document.getElementById('rp-phone-css')) return;
+  const style = document.createElement('style');
+  style.id = 'rp-phone-css';
+  style.textContent = RP_PHONE_CSS;
+  document.head.appendChild(style);
+  console.log('[Raymond Phone] CSS injected');
+}
