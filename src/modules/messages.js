@@ -139,12 +139,22 @@ function syncToCurrentChat() {
 
     // 保存旧窗口状态
     if (STATE.chatId) {
+      // 保存旧状态到CHAT_STORE
       CHAT_STORE[STATE.chatId] = {
         threads: JSON.parse(JSON.stringify(STATE.threads)),
         avatars: Object.assign({}, STATE.avatars || {}),
         settings: Object.assign({}, STATE.settings || {})
       };
-      saveState();
+      
+      // 保存旧状态到localStorage，使用旧的状态键
+      const oldStateKey = `rp_state_${STATE.chatId}`;
+      console.log('[Messages] Saving old state with key:', oldStateKey);
+      try {
+        localStorage.setItem(oldStateKey, JSON.stringify(STATE));
+        console.log('[Messages] Old state saved successfully');
+      } catch(e) {
+        console.error('[Messages] Failed to save old state:', e);
+      }
     }
 
     // 切到新窗口
@@ -152,7 +162,9 @@ function syncToCurrentChat() {
 
     // 直接从localStorage加载状态，不依赖CHAT_STORE
     // 这样可以确保每次切换对话时都能获取最新的状态
-    const saved = localStorage.getItem(`rp_state_${newChatId}`);
+    const newStateKey = `rp_state_${newChatId}`;
+    console.log('[Messages] Loading new state with key:', newStateKey);
+    const saved = localStorage.getItem(newStateKey);
     if (saved) {
       try {
         const loadedState = JSON.parse(saved);
@@ -162,6 +174,10 @@ function syncToCurrentChat() {
           userAvatar: '',
           userName: '我'
         };
+        console.log('[Messages] New state loaded successfully:', {
+          threads: Object.keys(STATE.threads).length,
+          chatId: STATE.chatId
+        });
       } catch(e) {
         console.error('[Messages] Failed to parse saved state:', e);
         // 初始化空状态
@@ -171,6 +187,7 @@ function syncToCurrentChat() {
           userAvatar: '',
           userName: '我'
         };
+        console.log('[Messages] Initialized empty state for new chat');
       }
     } else {
       // 初始化空状态
@@ -180,6 +197,7 @@ function syncToCurrentChat() {
         userAvatar: '',
         userName: '我'
       };
+      console.log('[Messages] Initialized empty state for new chat');
     }
 
     // 更新CHAT_STORE
@@ -190,6 +208,7 @@ function syncToCurrentChat() {
     };
 
     renderThreadList();
+    console.log('[Messages] Sync completed successfully');
   }
   
   trySync();
