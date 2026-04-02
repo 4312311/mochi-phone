@@ -43,13 +43,25 @@ function getStateKey() {
 // Load state from localStorage
 function loadState() {
   try {
-    const saved = localStorage.getItem(getStateKey());
+    const stateKey = getStateKey();
+    console.log('[Messages] Loading state with key:', stateKey);
+    const saved = localStorage.getItem(stateKey);
     if (saved) {
       const loadedState = JSON.parse(saved);
-      // 保留当前的chatId，避免覆盖
-      const currentChatId = STATE.chatId;
+      // 直接使用加载的状态，包括chatId
       STATE = loadedState;
-      STATE.chatId = currentChatId;
+      // 确保状态结构完整
+      if (!STATE.threads) STATE.threads = {};
+      if (!STATE.avatars) STATE.avatars = {};
+      if (!STATE.settings) {
+        STATE.settings = {
+          userAvatar: '',
+          userName: '我'
+        };
+      }
+      if (STATE.chatId === undefined) {
+        STATE.chatId = getCurrentCharacterId();
+      }
     } else {
       // Initialize empty state for new character
       STATE = {
@@ -59,7 +71,7 @@ function loadState() {
           userAvatar: '',
           userName: '我'
         },
-        chatId: null
+        chatId: getCurrentCharacterId()
       };
     }
   } catch(e) {
@@ -72,15 +84,26 @@ function loadState() {
         userAvatar: '',
         userName: '我'
       },
-      chatId: null
+      chatId: getCurrentCharacterId()
     };
   }
+  console.log('[Messages] Loaded state:', {
+    threads: Object.keys(STATE.threads).length,
+    chatId: STATE.chatId
+  });
 }
 
 // Save state to localStorage
 function saveState() {
   try {
-    localStorage.setItem(getStateKey(), JSON.stringify(STATE));
+    const stateKey = getStateKey();
+    console.log('[Messages] Saving state with key:', stateKey);
+    console.log('[Messages] State to save:', {
+      threads: Object.keys(STATE.threads).length,
+      chatId: STATE.chatId
+    });
+    localStorage.setItem(stateKey, JSON.stringify(STATE));
+    console.log('[Messages] State saved successfully');
   } catch(e) {
     console.error('[Messages] Failed to save state:', e);
   }
@@ -93,39 +116,63 @@ function getSTATE() {
 
 // Sync to current chat
 function syncToCurrentChat() {
-  const ctx = getContext();
-  const newChatId = ctx?.chatId || (ctx?.characterId != null ? `char_${ctx.characterId}` : 'default');
-  if (newChatId === STATE.chatId) return; // 已一致,跳过
+  // 重试获取字符ID，直到获取到非default的字符ID
+  function trySync() {
+    const ctx = getContext();
+    const newChatId = ctx?.chatId || (ctx?.characterId != null ? `char_${ctx.characterId}` : 'default');
+    
+    console.log('[Messages] syncToCurrentChat: trying to sync to', newChatId);
+    
+    if (newChatId === 'default') {
+      // 还没有获取到字符ID，继续重试
+      console.log('[Messages] Waiting for character to load...');
+      setTimeout(trySync, 500);
+      return;
+    }
+    
+    if (newChatId === STATE.chatId) {
+      console.log('[Messages] syncToCurrentChat: already synced to', newChatId);
+      return; // 已一致,跳过
+    }
 
-  console.log('[Messages] syncToCurrentChat:', STATE.chatId, '->', newChatId);
+    console.log('[Messages] syncToCurrentChat:', STATE.chatId, '->', newChatId);
 
-  // 保存旧窗口状态
-  if (STATE.chatId) {
-    CHAT_STORE[STATE.chatId] = {
-      threads: JSON.parse(JSON.stringify(STATE.threads)),
-      avatars: Object.assign({}, STATE.avatars || {}),
-      settings: Object.assign({}, STATE.settings || {})
-    };
-    saveState();
-  }
-
-  // 切到新窗口
-  STATE.chatId = newChatId;
-
-  // 直接从localStorage加载状态，不依赖CHAT_STORE
-  // 这样可以确保每次切换对话时都能获取最新的状态
-  const saved = localStorage.getItem(`rp_state_${newChatId}`);
-  if (saved) {
-    try {
-      const loadedState = JSON.parse(saved);
-      STATE.threads = loadedState.threads || {};
-      STATE.avatars = loadedState.avatars || {};
-      STATE.settings = loadedState.settings || {
-        userAvatar: '',
-        userName: '我'
+    // 保存旧窗口状态
+    if (STATE.chatId) {
+      CHAT_STORE[STATE.chatId] = {
+        threads: JSON.parse(JSON.stringify(STATE.threads)),
+        avatars: Object.assign({}, STATE.avatars || {}),
+        settings: Object.assign({}, STATE.settings || {})
       };
-    } catch(e) {
-      console.error('[Messages] Failed to parse saved state:', e);
+      saveState();
+    }
+
+    // 切到新窗口
+    STATE.chatId = newChatId;
+
+    // 直接从localStorage加载状态，不依赖CHAT_STORE
+    // 这样可以确保每次切换对话时都能获取最新的状态
+    const saved = localStorage.getItem(`rp_state_${newChatId}`);
+    if (saved) {
+      try {
+        const loadedState = JSON.parse(saved);
+        STATE.threads = loadedState.threads || {};
+        STATE.avatars = loadedState.avatars || {};
+        STATE.settings = loadedState.settings || {
+          userAvatar: '',
+          userName: '我'
+        };
+      } catch(e) {
+        console.error('[Messages] Failed to parse saved state:', e);
+        // 初始化空状态
+        STATE.threads = {};
+        STATE.avatars = {};
+        STATE.settings = {
+          userAvatar: '',
+          userName: '我'
+        };
+      }
+    } else {
       // 初始化空状态
       STATE.threads = {};
       STATE.avatars = {};
@@ -134,24 +181,18 @@ function syncToCurrentChat() {
         userName: '我'
       };
     }
-  } else {
-    // 初始化空状态
-    STATE.threads = {};
-    STATE.avatars = {};
-    STATE.settings = {
-      userAvatar: '',
-      userName: '我'
+
+    // 更新CHAT_STORE
+    CHAT_STORE[newChatId] = {
+      threads: JSON.parse(JSON.stringify(STATE.threads)),
+      avatars: Object.assign({}, STATE.avatars || {}),
+      settings: Object.assign({}, STATE.settings || {})
     };
+
+    renderThreadList();
   }
-
-  // 更新CHAT_STORE
-  CHAT_STORE[newChatId] = {
-    threads: JSON.parse(JSON.stringify(STATE.threads)),
-    avatars: Object.assign({}, STATE.avatars || {}),
-    settings: Object.assign({}, STATE.settings || {})
-  };
-
-  renderThreadList();
+  
+  trySync();
 }
 
 // Get context
@@ -636,13 +677,23 @@ function beautifySMSInChat(text) {
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
   
-  // 延迟加载状态，确保SillyTavern的上下文已经加载完成
-  setTimeout(() => {
+  // 重试加载状态，直到获取到非default的字符ID
+  function tryLoadState() {
     const characterId = getCurrentCharacterId();
     console.log('[Messages] Loading state for character:', characterId);
-    loadState();
-    renderThreadList();
-  }, 1000);
+    
+    if (characterId === 'default') {
+      // 还没有获取到字符ID，继续重试
+      console.log('[Messages] Waiting for character to load...');
+      setTimeout(tryLoadState, 500);
+    } else {
+      // 已经获取到字符ID，加载状态
+      loadState();
+      renderThreadList();
+    }
+  }
+  
+  tryLoadState();
 
   // Bind thread item click
   $(document).on('click', '.rp-thread', function() {
