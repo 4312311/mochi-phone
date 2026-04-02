@@ -45,7 +45,11 @@ function loadState() {
   try {
     const saved = localStorage.getItem(getStateKey());
     if (saved) {
-      STATE = JSON.parse(saved);
+      const loadedState = JSON.parse(saved);
+      // 保留当前的chatId，避免覆盖
+      const currentChatId = STATE.chatId;
+      STATE = loadedState;
+      STATE.chatId = currentChatId;
     } else {
       // Initialize empty state for new character
       STATE = {
@@ -54,7 +58,8 @@ function loadState() {
         settings: {
           userAvatar: '',
           userName: '我'
-        }
+        },
+        chatId: null
       };
     }
   } catch(e) {
@@ -66,7 +71,8 @@ function loadState() {
       settings: {
         userAvatar: '',
         userName: '我'
-      }
+      },
+      chatId: null
     };
   }
 }
@@ -106,14 +112,44 @@ function syncToCurrentChat() {
   // 切到新窗口
   STATE.chatId = newChatId;
 
-  if (CHAT_STORE[newChatId]) {
-    const s = CHAT_STORE[newChatId];
-    STATE.threads = s.threads || {};
-    STATE.avatars = Object.assign({}, s.avatars || {});
-    STATE.settings = Object.assign({}, s.settings || {});
+  // 直接从localStorage加载状态，不依赖CHAT_STORE
+  // 这样可以确保每次切换对话时都能获取最新的状态
+  const saved = localStorage.getItem(`rp_state_${newChatId}`);
+  if (saved) {
+    try {
+      const loadedState = JSON.parse(saved);
+      STATE.threads = loadedState.threads || {};
+      STATE.avatars = loadedState.avatars || {};
+      STATE.settings = loadedState.settings || {
+        userAvatar: '',
+        userName: '我'
+      };
+    } catch(e) {
+      console.error('[Messages] Failed to parse saved state:', e);
+      // 初始化空状态
+      STATE.threads = {};
+      STATE.avatars = {};
+      STATE.settings = {
+        userAvatar: '',
+        userName: '我'
+      };
+    }
   } else {
-    loadState();
+    // 初始化空状态
+    STATE.threads = {};
+    STATE.avatars = {};
+    STATE.settings = {
+      userAvatar: '',
+      userName: '我'
+    };
   }
+
+  // 更新CHAT_STORE
+  CHAT_STORE[newChatId] = {
+    threads: JSON.parse(JSON.stringify(STATE.threads)),
+    avatars: Object.assign({}, STATE.avatars || {}),
+    settings: Object.assign({}, STATE.settings || {})
+  };
 
   renderThreadList();
 }
