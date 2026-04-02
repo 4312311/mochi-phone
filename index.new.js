@@ -53,11 +53,13 @@ import { showMigratingMessage } from './src/modules/placeholder.js';
 // ================================================================
 //  注入CSS样式
 // ================================================================
-(function injectStyles() {
+function injectStyles() {
+  if (document.getElementById('rp-phone-css')) return;
   const style = document.createElement('style');
+  style.id = 'rp-phone-css';
   style.textContent = RP_PHONE_CSS;
   document.head.appendChild(style);
-})();
+}
 
 // ================================================================
 //  全局状态（仅核心状态，各模块状态在模块内部管理）
@@ -308,6 +310,9 @@ async function init() {
   if (staleFab) staleFab.remove();
   const staleCSS = document.getElementById('rp-phone-css');
   if (staleCSS) staleCSS.remove();
+
+  // 注入CSS
+  injectStyles();
 
   // 注入HTML
   document.body.insertAdjacentHTML('beforeend', RP_PHONE_HTML);

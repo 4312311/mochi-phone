@@ -155,7 +155,6 @@ function lgRenderThemePicker() {
 function initThemes() {
   console.log('[Raymond Phone] Themes Module initialized');
   lgInitTheme();
-  lgRenderHomeIcons();
 }
 
 export {
