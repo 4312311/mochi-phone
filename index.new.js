@@ -48,7 +48,7 @@ import {
 } from './src/modules/themes.js';
 
 // 4. 导入占位符模块（显示未迁移功能提示）
-import { showNotMigrated } from './src/modules/placeholder.js';
+import { showMigratingMessage } from './src/modules/placeholder.js';
 
 // ================================================================
 //  注入CSS样式
