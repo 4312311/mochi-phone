@@ -18,22 +18,59 @@ let STATE = {
   }
 };
 
+// Get current character ID
+function getCurrentCharacterId() {
+  try {
+    if (window.SillyTavern && window.SillyTavern.getContext) {
+      const context = window.SillyTavern.getContext();
+      return context?.characterId || 'default';
+    }
+  } catch(e) {
+    console.error('[Messages] Failed to get current character:', e);
+  }
+  return 'default';
+}
+
+// Get state key for current character
+function getStateKey() {
+  return `rp_state_${getCurrentCharacterId()}`;
+}
+
 // Load state from localStorage
 function loadState() {
   try {
-    const saved = localStorage.getItem('rp_state');
+    const saved = localStorage.getItem(getStateKey());
     if (saved) {
       STATE = JSON.parse(saved);
+    } else {
+      // Initialize empty state for new character
+      STATE = {
+        threads: {},
+        avatars: {},
+        settings: {
+          userAvatar: '',
+          userName: '我'
+        }
+      };
     }
   } catch(e) {
     console.error('[Messages] Failed to load state:', e);
+    // Initialize empty state on error
+    STATE = {
+      threads: {},
+      avatars: {},
+      settings: {
+        userAvatar: '',
+        userName: '我'
+      }
+    };
   }
 }
 
 // Save state to localStorage
 function saveState() {
   try {
-    localStorage.setItem('rp_state', JSON.stringify(STATE));
+    localStorage.setItem(getStateKey(), JSON.stringify(STATE));
   } catch(e) {
     console.error('[Messages] Failed to save state:', e);
   }

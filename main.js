@@ -297,10 +297,27 @@ async function init() {
 // 导出navigateTo供其他模块使用
 window.navigateTo = navigateTo;
 
+// 监听角色切换事件
+function setupCharacterSwitchListener() {
+  // 检查是否存在角色切换的事件或方法
+  if (window.SillyTavern) {
+    // 监听可能的角色切换事件
+    $(document).on('click', '.character-selector, .character-card', function() {
+      // 延迟执行，确保角色已切换
+      setTimeout(() => {
+        console.log('[Raymond Phone] Character switched, reloading messages...');
+        // 重新初始化消息模块
+        initSMS();
+      }, 500);
+    });
+  }
+}
+
 // 自动初始化
 $(async function() {
   try {
     await init();
+    setupCharacterSwitchListener();
   } catch(e) {
     console.error('[Raymond Phone] init failed:', e);
   }
