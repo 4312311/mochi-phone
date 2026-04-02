@@ -119,6 +119,7 @@ function navigateTo(page, appInfo = null) {
       break;
     case 'api-settings':
       $('#rp-view-api-settings').show();
+      lgFillAPIView();
       break;
     case 'settings':
       $('#rp-view-settings').show();
