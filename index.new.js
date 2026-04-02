@@ -254,7 +254,7 @@ const RP_PHONE_HTML = `
 // ================================================================
 //  路由控制
 // ================================================================
-const navigateTo = function(page, appInfo = null) {
+function navigateTo(page, appInfo = null) {
   // 隐藏所有视图
   $('#rp-home').hide();
   $('.rp-view').hide();
@@ -272,11 +272,20 @@ const navigateTo = function(page, appInfo = null) {
     case 'not-migrated':
       $('#rp-not-migrated').show();
       if (appInfo) {
-        showNotMigrated(appInfo);
+        const appNames = {
+          'moments': '朋友圈',
+          'settings': '设置',
+          'folder-games': '游戏',
+          'diary': '日记',
+          'xhs': '小红书',
+          'bank': '银行'
+        };
+        const name = appNames[appInfo] || appInfo;
+        $('#rp-not-migrated-app-name').text(`【${name}】\n\n该功能正在迁移中，暂时无法使用。\n\n请等待后续更新。`);
       }
       break;
   }
-};
+}
 
 // ================================================================
 //  初始化
@@ -314,7 +323,6 @@ async function init() {
         break;
       default:
         // 未迁移的功能显示提示
-        showNotMigrated(app);
         navigateTo('not-migrated', app);
     }
   });
