@@ -50,6 +50,19 @@ import {
   initThemes
 } from './src/modules/themes.js';
 
+// 5. 导入朋友圈模块
+import {
+  initMoments,
+  renderMoments,
+  mergeGlobalAvatars
+} from './src/modules/moments.js';
+
+// 6. 导入设置模块
+import {
+  initSettings,
+  _bindAvatarUpload
+} from './src/modules/settings.js';
+
 // 5. 导入占位符模块（显示未迁移功能提示）
 import { showMigratingMessage } from './src/modules/placeholder.js';
 
@@ -109,8 +122,12 @@ function navigateTo(page, appInfo = null) {
       break;
     case 'settings':
       $('#rp-view-settings').show();
+      _bindAvatarUpload();
       break;
     case 'moments':
+      $('#rp-view-moments').show();
+      renderMoments();
+      break;
     case 'diary':
     case 'xhs':
     case 'bank':
@@ -120,8 +137,6 @@ function navigateTo(page, appInfo = null) {
     case 'game':
       // 未迁移的功能显示提示
       const appNames = {
-        'moments': '朋友圈',
-        'settings': '设置',
         'folder-games': '游戏',
         'diary': '日记',
         'xhs': '小红书',
@@ -209,6 +224,12 @@ async function init() {
 
   // 初始化短信模块
   initSMS();
+
+  // 初始化朋友圈模块
+  initMoments();
+
+  // 初始化设置模块
+  initSettings();
 
   // 绑定FAB点击事件
   $('#rp-fab').on('click', function() {
