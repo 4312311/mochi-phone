@@ -364,9 +364,10 @@ function initSMS() {
     const text = $input.val().trim();
     if (!text) return;
 
-    const currentThread = STATE.threads.find(t => t.id === getSTATE().currentThreadId);
+    const currentThreadId = getSTATE().currentThreadId;
+    const currentThread = STATE.threads[currentThreadId];
     if (currentThread) {
-      sendSMS(currentThread.id, text);
+      sendSMS(currentThreadId, text);
       $input.val('');
     }
   });
@@ -378,9 +379,10 @@ function initSMS() {
       const text = $input.val().trim();
       if (!text) return;
 
-      const currentThread = STATE.threads.find(t => t.id === getSTATE().currentThreadId);
+      const currentThreadId = getSTATE().currentThreadId;
+      const currentThread = STATE.threads[currentThreadId];
       if (currentThread) {
-        sendSMS(currentThread.id, text);
+        sendSMS(currentThreadId, text);
         $input.val('');
       }
     }
@@ -388,6 +390,12 @@ function initSMS() {
 
   // Bind add button
   $(document).on('click', '#rp-add-btn', function() {
+    // Check if we have a current character
+    const characterId = getCurrentCharacterId();
+    if (characterId === 'default') {
+      alert('请先打开一个对话，然后再添加联系人。');
+      return;
+    }
     showAddChoice();
   });
 
