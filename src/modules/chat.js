@@ -609,10 +609,26 @@ export function renderPendingQueue() {
 export function refreshBadges() {
   let total = 0;
   Object.values(STATE.threads).forEach(th => {
-    const el = $(`#rp-tbadge-${th.id}`);
-    if (el.length) {
-      th.unread > 0 ? el.text(th.unread).show() : el.hide();
+    const badgeEl = $(`#rp-tbadge-${th.id}`);
+    const previewEl = $(`#rp-tp-${th.id}`);
+    const timeEl = $(`#rp-tt-${th.id}`);
+    
+    if (badgeEl.length) {
+      th.unread > 0 ? badgeEl.text(th.unread).show() : badgeEl.hide();
     }
+    
+    if (previewEl.length) {
+      const lastMsg = th.messages.at(-1);
+      const senderLabel = lastMsg ? (lastMsg.from === 'user' ? '我' : th.name.split(' ')[0]) : '';
+      const previewFull = lastMsg ? (senderLabel + ':' + lastMsg.text) : '暂无消息';
+      const preview = previewFull.length > 28 ? previewFull.slice(0, 27) + '...' : previewFull;
+      previewEl.text(preview);
+      
+      if (timeEl.length && lastMsg) {
+        timeEl.text(lastMsg.time);
+      }
+    }
+    
     total += th.unread;
   });
   total > 0 ? $('#rp-main-badge').text(total).show() : $('#rp-main-badge').hide();
@@ -791,33 +807,6 @@ export function openSettings() {
 /**
  * 刷新徽章
  */
-export function refreshBadges() {
-  // 刷新通知徽章
-  Object.values(STATE.threads).forEach(th => {
-    const badgeEl = $(`#rp-tbadge-${th.id}`);
-    const previewEl = $(`#rp-tp-${th.id}`);
-    const timeEl = $(`#rp-tt-${th.id}`);
-    
-    if (th.unread > 0) {
-      badgeEl.show().text(th.unread);
-    } else {
-      badgeEl.hide();
-    }
-    
-    if (previewEl.length) {
-      const lastMsg = th.messages.at(-1);
-      const senderLabel = lastMsg ? (lastMsg.from === 'user' ? '我' : th.name.split(' ')[0]) : '';
-      const previewFull = lastMsg ? (senderLabel + ':' + lastMsg.text) : '暂无消息';
-      const preview = previewFull.length > 28 ? previewFull.slice(0, 27) + '...' : previewFull;
-      previewEl.text(preview);
-      
-      if (timeEl.length && lastMsg) {
-        timeEl.text(lastMsg.time);
-      }
-    }
-  });
-}
-
 /**
  * 刷新小部件
  */
