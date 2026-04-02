@@ -3,10 +3,13 @@
 //  职责：模块导入、CSS注入、主框架渲染、路由控制
 // ================================================================
 
-// 1. 导入CSS样式模块
+// 1. 导入HTML模板
+import { RP_PHONE_HTML } from './src/html.js';
+
+// 2. 导入CSS样式模块
 import { RP_PHONE_CSS } from './src/styles/css.js';
 
-// 2. 导入短信模块
+// 3. 导入短信模块
 import {
   sendSMS,
   sanitizeSmsText,
@@ -35,7 +38,7 @@ import {
   refreshBadges
 } from './src/modules/sms.js';
 
-// 3. 导入主题模块
+// 4. 导入主题模块
 import {
   THEMES,
   RP_THEME_ICONS,
@@ -47,7 +50,7 @@ import {
   initThemes
 } from './src/modules/themes.js';
 
-// 4. 导入占位符模块（显示未迁移功能提示）
+// 5. 导入占位符模块（显示未迁移功能提示）
 import { showMigratingMessage } from './src/modules/placeholder.js';
 
 // ================================================================
