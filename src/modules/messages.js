@@ -118,8 +118,8 @@ function getSTATE() {
 function syncToCurrentChat() {
   // 重试获取字符ID，直到获取到非default的字符ID
   function trySync() {
-    const ctx = getContext();
-    const newChatId = ctx?.chatId || (ctx?.characterId != null ? `char_${ctx.characterId}` : 'default');
+    // 使用getCurrentCharacterId函数来获取当前字符ID，确保与其他函数使用相同的逻辑
+    const newChatId = getCurrentCharacterId();
     
     console.log('[Messages] syncToCurrentChat: trying to sync to', newChatId);
     
@@ -207,6 +207,8 @@ function syncToCurrentChat() {
       settings: Object.assign({}, STATE.settings || {})
     };
 
+    // 强制重新渲染联系人列表
+    console.log('[Messages] Rendering thread list with', Object.keys(STATE.threads).length, 'threads');
     renderThreadList();
     console.log('[Messages] Sync completed successfully');
   }
