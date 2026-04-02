@@ -329,8 +329,18 @@ function setupCharacterSwitchListener() {
       // 延迟执行，确保角色已切换
       setTimeout(() => {
         console.log('[Raymond Phone] Character switched, reloading messages...');
-        // 重新初始化消息模块
-        initSMS();
+        // 同步到当前对话
+        syncToCurrentChat();
+      }, 500);
+    });
+    
+    // 监听可能的对话切换事件（如新建对话、选择对话等）
+    $(document).on('click', '.chat-selector, .chat-item, #new-chat-button', function() {
+      // 延迟执行，确保对话已切换
+      setTimeout(() => {
+        console.log('[Raymond Phone] Chat switched, reloading messages...');
+        // 同步到当前对话
+        syncToCurrentChat();
       }, 500);
     });
   }

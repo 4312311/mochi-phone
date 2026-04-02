@@ -15,8 +15,12 @@ let STATE = {
   settings: {
     userAvatar: '',
     userName: '我'
-  }
+  },
+  chatId: null
 };
+
+// Chat store for caching different chat states
+const CHAT_STORE = {};
 
 // Get current character ID
 function getCurrentCharacterId() {
@@ -79,6 +83,47 @@ function saveState() {
 // Get state
 function getSTATE() {
   return STATE;
+}
+
+// Sync to current chat
+function syncToCurrentChat() {
+  const ctx = getContext();
+  const newChatId = ctx?.chatId || (ctx?.characterId != null ? `char_${ctx.characterId}` : 'default');
+  if (newChatId === STATE.chatId) return; // 已一致,跳过
+
+  console.log('[Messages] syncToCurrentChat:', STATE.chatId, '->', newChatId);
+
+  // 保存旧窗口状态
+  if (STATE.chatId) {
+    CHAT_STORE[STATE.chatId] = {
+      threads: JSON.parse(JSON.stringify(STATE.threads)),
+      avatars: Object.assign({}, STATE.avatars || {}),
+      settings: Object.assign({}, STATE.settings || {})
+    };
+    saveState();
+  }
+
+  // 切到新窗口
+  STATE.chatId = newChatId;
+
+  if (CHAT_STORE[newChatId]) {
+    const s = CHAT_STORE[newChatId];
+    STATE.threads = s.threads || {};
+    STATE.avatars = Object.assign({}, s.avatars || {});
+    STATE.settings = Object.assign({}, s.settings || {});
+  } else {
+    loadState();
+  }
+
+  renderThreadList();
+}
+
+// Get context
+function getContext() {
+  if (window.SillyTavern && window.SillyTavern.getContext) {
+    return window.SillyTavern.getContext();
+  }
+  return null;
 }
 
 // Escape HTML
