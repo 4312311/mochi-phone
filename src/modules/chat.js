@@ -589,18 +589,26 @@ export function sendSMS() {
  * 渲染待发队列
  */
 export function renderPendingQueue() {
-  const container = $('#rp-pending-queue');
-  container.empty();
-  if (STATE.pendingMessages.length === 0) {
-    container.hide();
-    return;
+  const queueContainer = $('#rp-pending-queue');
+  if (!queueContainer.length) return;
+  
+  queueContainer.empty();
+  
+  if (STATE.pendingMessages && STATE.pendingMessages.length > 0) {
+    STATE.pendingMessages.forEach((msg, idx) => {
+      queueContainer.append(`
+        <div class="rp-pending-item">
+          <span>${msg.text.substring(0, 30)}${msg.text.length > 30 ? '...' : ''}</span>
+        </div>
+      `);
+    });
+    
+    if (STATE.pendingMessages.length > 3) {
+      queueContainer.append(`
+        <div class="rp-pending-hint">还有 ${STATE.pendingMessages.length - 3} 条待发送...</div>
+      `);
+    }
   }
-  container.show();
-  STATE.pendingMessages.forEach((msg) => {
-    const short = msg.length > 30 ? msg.slice(0, 30) + '...' : msg;
-    container.append(`<div class="rp-pending-item">${short}</div>`);
-  });
-  container.append(`<div class="rp-pending-hint">点击 ↑ 发送全部 ${STATE.pendingMessages.length} 条</div>`);
 }
 
 /**
@@ -639,12 +647,20 @@ export function refreshBadges() {
  */
 export function updatePreviews() {
   Object.values(STATE.threads).forEach(th => {
-    const last = th.messages.at(-1);
-    if (!last) return;
-    const sl = last.from === 'user' ? '我' : th.name.split(' ')[0];
-    const pf = sl + ':' + last.text;
-    $(`#rp-tp-${th.id}`).text(pf.length > 28 ? pf.slice(0, 27) + '...' : pf);
-    $(`#rp-tt-${th.id}`).text(last.time);
+    const previewEl = $(`#rp-tp-${th.id}`);
+    const timeEl = $(`#rp-tt-${th.id}`);
+    
+    if (previewEl.length) {
+      const lastMsg = th.messages.at(-1);
+      const senderLabel = lastMsg ? (lastMsg.from === 'user' ? '我' : th.name.split(' ')[0]) : '';
+      const previewFull = lastMsg ? (senderLabel + ':' + lastMsg.text) : '暂无消息';
+      const preview = previewFull.length > 28 ? previewFull.slice(0, 27) + '...' : previewFull;
+      previewEl.text(preview);
+      
+      if (timeEl.length && lastMsg) {
+        timeEl.text(lastMsg.time);
+      }
+    }
   });
 }
 
@@ -829,54 +845,12 @@ export function hidePhoneTagsInChat() {
 }
 
 /**
- * 更新预览
+ * 刷新锁屏通知
  */
-export function updatePreviews() {
-  // 更新线程预览
-  Object.values(STATE.threads).forEach(th => {
-    const previewEl = $(`#rp-tp-${th.id}`);
-    const timeEl = $(`#rp-tt-${th.id}`);
-    
-    if (previewEl.length) {
-      const lastMsg = th.messages.at(-1);
-      const senderLabel = lastMsg ? (lastMsg.from === 'user' ? '我' : th.name.split(' ')[0]) : '';
-      const previewFull = lastMsg ? (senderLabel + ':' + lastMsg.text) : '暂无消息';
-      const preview = previewFull.length > 28 ? previewFull.slice(0, 27) + '...' : previewFull;
-      previewEl.text(preview);
-      
-      if (timeEl.length && lastMsg) {
-        timeEl.text(lastMsg.time);
-      }
-    }
-  });
-}
 
 /**
  * 渲染待发队列
  */
-export function renderPendingQueue() {
-  const queueContainer = $('#rp-pending-queue');
-  if (!queueContainer.length) return;
-  
-  queueContainer.empty();
-  
-  if (STATE.pendingMessages && STATE.pendingMessages.length > 0) {
-    STATE.pendingMessages.forEach((msg, idx) => {
-      queueContainer.append(`
-        <div class="rp-pending-item">
-          <span>${msg.text.substring(0, 30)}${msg.text.length > 30 ? '...' : ''}</span>
-        </div>
-      `);
-    });
-    
-    if (STATE.pendingMessages.length > 3) {
-      queueContainer.append(`
-        <div class="rp-pending-hint">还有 ${STATE.pendingMessages.length - 3} 条待发送...</div>
-      `);
-    }
-  }
-}
-
 /**
  * 渲染日记
  */
