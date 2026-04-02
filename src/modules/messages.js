@@ -554,8 +554,22 @@ function beautifySMSInChat(text) {
 // Initialize messages module
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
-  loadState();
-  renderThreadList();
+  
+  // 尝试加载状态，如果返回default，则重试
+  function tryLoadState() {
+    const characterId = getCurrentCharacterId();
+    if (characterId === 'default') {
+      console.log('[Messages] Waiting for character to load...');
+      // 延迟1秒后重试
+      setTimeout(tryLoadState, 1000);
+    } else {
+      console.log('[Messages] Loading state for character:', characterId);
+      loadState();
+      renderThreadList();
+    }
+  }
+  
+  tryLoadState();
 
   // Bind thread item click
   $(document).on('click', '.rp-thread', function() {
