@@ -122,14 +122,16 @@ function updatePreviews() {
     const time = lastMsg ? formatTime(lastMsg.timestamp) : '';
 
     $list.append(`
-      <div class="rp-thread-item" data-thread-id="${thread.id}">
-        <div class="rp-thread-av" style="background:${thread.avatarBg}">${sanitizeSmsText(thread.initials)}</div>
-        <div class="rp-thread-info">
-          <div class="rp-thread-name">${sanitizeSmsText(thread.name)}</div>
-          <div class="rp-thread-preview">${sanitizeSmsText(preview)}</div>
+      <div class="rp-thread" data-thread-id="${thread.id}">
+        <div class="rp-av" style="background:${thread.avatarBg}">${sanitizeSmsText(thread.initials)}</div>
+        <div class="rp-ti">
+          <div class="rp-tn">${sanitizeSmsText(thread.name)}</div>
+          <div class="rp-tp">${sanitizeSmsText(preview)}</div>
         </div>
-        <div class="rp-thread-time">${time}</div>
-        ${thread.unread > 0 ? `<div class="rp-thread-badge">${thread.unread}</div>` : ''}
+        <div class="rp-tm">
+          <div class="rp-tt">${time}</div>
+          ${thread.unread > 0 ? `<div class="rp-tbadge">${thread.unread}</div>` : ''}
+        </div>
       </div>
     `);
   });
@@ -304,7 +306,7 @@ function initSMS() {
   renderThreadList();
 
   // Bind thread item click
-  $(document).on('click', '.rp-thread-item', function() {
+  $(document).on('click', '.rp-thread', function() {
     const threadId = $(this).data('thread-id');
     openThread(threadId);
 
