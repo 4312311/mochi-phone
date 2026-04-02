@@ -1,8 +1,4 @@
-// ================================================================
-//  INJECT STYLES
-//  CSS 样式模块
-// ================================================================
-const CSS_STRING = `/* ── wrapper ── */
+export const RP_PHONE_CSS = `
 #rp-wrapper { position:fixed; right:20px; bottom:20px; z-index:9998; }
 
 /* ── FAB ── */
@@ -4504,5 +4500,3 @@ const CSS_STRING = `/* ── wrapper ── */
 }
 
 `;
-
-export const RP_PHONE_CSS = CSS_STRING;

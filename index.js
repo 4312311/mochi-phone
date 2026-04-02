@@ -1,4 +1,10 @@
 // ================================================================
+//  MODULE IMPORTS
+// ================================================================
+import * as MessagesModule from './modules/messages.js';
+import * as ThemesModule from './modules/themes.js';
+
+// ================================================================
 //  INJECT STYLES
 //  CSS 从 manifest 的 css 字段移至此处 JS 注入,
 //  彻底绕开 SillyTavern 扩展 CSS 加载管线,
