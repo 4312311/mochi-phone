@@ -16,8 +16,8 @@ function initSettings() {
 
 // Bind avatar upload
 function _bindAvatarUpload() {
-  const fileInput = document.getElementById('rp-avatar-input');
-  const uploadBtn = document.getElementById('rp-avatar-upload');
+  const fileInput = document.getElementById('rp-avatar-file-input');
+  const uploadBtn = document.getElementById('rp-avatar-upload-btn');
   if (!fileInput || !uploadBtn) {
     console.log('[Phone:av] _bindAvatarUpload: elements not found');
     return;
@@ -39,7 +39,7 @@ function _bindAvatarUpload() {
 
 // Bind wallpaper upload
 function _bindWallpaperUpload() {
-  const wallInput = document.getElementById('rp-wall-input');
+  const wallInput = document.getElementById('rp-wall-file');
   const wallUpload = document.getElementById('rp-wall-upload');
   const wallReset = document.getElementById('rp-wall-reset');
   if (!wallInput || !wallUpload) return;

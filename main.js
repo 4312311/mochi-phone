@@ -60,7 +60,8 @@ import {
 // 6. 导入设置模块
 import {
   initSettings,
-  _bindAvatarUpload
+  _bindAvatarUpload,
+  lgFillAPIView
 } from './src/modules/settings.js';
 
 // 5. 导入占位符模块（显示未迁移功能提示）

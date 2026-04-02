@@ -668,8 +668,15 @@ function initSMS() {
     const initials = $('#rp-add-initials').val().trim() || name.slice(0, 2);
     if (!name) return;
 
+    // 检查是否有当前字符ID（不是默认值）
+    const characterId = getCurrentCharacterId();
+    if (characterId === 'default') {
+      alert('请先打开一个对话，然后再添加联系人');
+      return;
+    }
+
     const threadId = name;
-    const colorIdx = STATE.threads.length % GROUP_COLORS.length;
+    const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
     STATE.threads[threadId] = {
       id: threadId, name, initials,
       avatarBg: `linear-gradient(145deg,${GROUP_COLORS[colorIdx]},${GROUP_COLORS[(colorIdx+1)%GROUP_COLORS.length]})`,
