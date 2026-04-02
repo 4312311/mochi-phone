@@ -108,6 +108,8 @@ function navigateTo(page, appInfo = null) {
       break;
     case 'messages':
       $('#rp-view-messages').show();
+      // 同步到当前对话，确保联系人列表正确
+      syncToCurrentChat();
       break;
     case 'thread':
       $('#rp-view-thread').show();
@@ -129,6 +131,8 @@ function navigateTo(page, appInfo = null) {
       break;
     case 'moments':
       $('#rp-view-moments').show();
+      // 同步到当前对话，确保朋友圈数据正确
+      syncToCurrentChat();
       renderMoments();
       break;
     case 'diary':
