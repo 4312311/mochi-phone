@@ -513,6 +513,13 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           console.log('[Raymond Phone] Message already processed (same fingerprint)');
           return;
         }
+
+        // 检查是否是同一个 chatId 的新消息（说明 AI 消息被重新生成了）
+        if (window._lastAiFingerprint && window._lastAiFingerprint.startsWith(ctx.chatId + '|')) {
+          console.log('[Raymond Phone] AI message regenerated, clearing old phone messages');
+          cleanupOldMessages();
+        }
+
         window._lastAiFingerprint = fp;
 
         // 详细调试：记录完整的原始消息（前500字符）
@@ -558,22 +565,37 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         // 匹配 PHONE 块 - 匹配最后一个完整的 PHONE 块（避免匹配思维链中的示例）
         let phoneMatch = null;
         const allPhoneMatches = [...normalizedRaw.matchAll(/<PHONE>([\s\S]*?)<\/PHONE>/gi)];
+
+        // 如果使用贪婪匹配，需要特殊处理嵌套情况
+        // 这里使用改进的正则：确保每个PHONE块匹配完整
         if (allPhoneMatches.length > 0) {
-          // 从后向前找，找到第一个包含真实标签的PHONE块
+          // 输出所有匹配块的前50个字符用于调试
+          console.log('[Raymond Phone] All PHONE blocks preview:');
+          allPhoneMatches.forEach((m, idx) => {
+            const preview = m[1] ? m[1].substring(0, 50).replace(/\n/g, '\\n') : 'empty';
+            console.log(`  Block ${idx}: "${preview}..."`);
+          });
+        }
+        if (allPhoneMatches.length > 0) {
+          // 从后向前找，找到第一个包含真实标签且内容足够长的PHONE块
+          // 思维链中的示例通常很短，而真正的PHONE块通常很长
           for (let i = allPhoneMatches.length - 1; i >= 0; i--) {
             const candidate = allPhoneMatches[i];
             const phoneContent = candidate[1] || '';
             const hasRealTags = /<(SMS|GMSG|GVOICE|GHONGBAO|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(phoneContent);
-            if (hasRealTags) {
+            const contentLength = phoneContent.length;
+            const minRealLength = 200; // 真实PHONE块至少200字符
+
+            if (hasRealTags && contentLength >= minRealLength) {
               phoneMatch = candidate;
-              console.log('[Raymond Phone] Found', allPhoneMatches.length, 'PHONE blocks, using block', i, 'which has real tags');
+              console.log('[Raymond Phone] Found', allPhoneMatches.length, 'PHONE blocks, using block', i, 'which has real tags and length', contentLength);
               break;
             }
           }
-          // 如果都没找到真实标签，就用最后一个
+          // 如果没找到符合条件的，就用最后一个
           if (!phoneMatch && allPhoneMatches.length > 0) {
             phoneMatch = allPhoneMatches[allPhoneMatches.length - 1];
-            console.log('[Raymond Phone] No PHONE block has real tags, using the last one as fallback');
+            console.log('[Raymond Phone] Fallback to last PHONE block');
           }
         }
         const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(normalizedRaw);
@@ -600,6 +622,11 @@ function registerAIResponseListeners(eventSource, eventTypes) {
             } else {
               console.warn('[Raymond Phone] parsePhone returned 0 items, but PHONE block exists');
             }
+
+            // 启动监听，等待消息内容的任何变化（包括图片替换、文字修改等）
+            console.log('[Raymond Phone] Starting message change monitoring for chat:', ctx.chatId);
+            startMessageChangeMonitor(ctx.chatId, phoneMatch[1], lastAI.mes);
+
           } catch(e) {
             console.error('[Raymond Phone] Error in parsePhone:', e);
           }
@@ -608,6 +635,11 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           try {
             const parsedCount = parsePhone(normalizedRaw);
             console.log('[Raymond Phone] parsePhone (bare tags) returned:', parsedCount, 'items');
+
+            // 同样启动监听
+            console.log('[Raymond Phone] Starting message change monitoring for chat:', ctx.chatId);
+            startMessageChangeMonitor(ctx.chatId, null, lastAI.mes);
+
           } catch(e) {
             console.error('[Raymond Phone] Error in parsePhone (bare):', e);
           }
@@ -617,6 +649,123 @@ function registerAIResponseListeners(eventSource, eventTypes) {
       });
     }
   });
+}
+
+// 监听 AI 消息内容变化（包括图片替换、文字修改等）
+function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage) {
+  const interval = 2000; // 每 2 秒检查一次，减少性能开销
+
+  console.log('[Raymond Phone] Starting message change monitoring for chat:', chatId);
+
+  // 如果已经存在该 chatId 的监控，先清除旧的
+  if (window._messageMonitors && window._messageMonitors[chatId]) {
+    console.log('[Raymond Phone] Clearing existing monitor for chat:', chatId);
+    clearInterval(window._messageMonitors[chatId]);
+  }
+
+  if (!window._messageMonitors) {
+    window._messageMonitors = {};
+  }
+
+  const pollTimer = setInterval(() => {
+    // 获取最新的 AI 消息内容
+    const ctx = getContext();
+    if (!ctx) {
+      clearInterval(pollTimer);
+      return;
+    }
+
+    // 如果 chatId 不匹配，说明用户切换了聊天，停止监控
+    if (ctx.chatId !== chatId) {
+      console.log('[Raymond Phone] Chat ID changed, stopping monitor for:', chatId);
+      clearInterval(pollTimer);
+      if (window._messageMonitors[chatId] === pollTimer) {
+        delete window._messageMonitors[chatId];
+      }
+      return;
+    }
+
+    const chat = ctx.chat;
+    if (!chat?.length) {
+      clearInterval(pollTimer);
+      return;
+    }
+
+    const lastAI = [...chat].reverse().find(m => !m.is_user);
+    if (!lastAI || !lastAI.mes) {
+      clearInterval(pollTimer);
+      return;
+    }
+
+    const currentMessage = lastAI.mes;
+
+    // 检查消息内容是否发生变化
+    // 1. 消息指纹（长度 + 前后片段）
+    const currentFingerprint = `${currentMessage.length}|${currentMessage.slice(0, 50)}|${currentMessage.slice(-50)}`;
+    const originalFingerprint = `${originalMessage.length}|${originalMessage.slice(0, 50)}|${originalMessage.slice(-50)}`;
+
+    if (currentFingerprint !== originalFingerprint) {
+      console.log('[Raymond Phone] Message content changed, re-parsing PHONE block');
+      console.log('[Raymond Phone] Original fingerprint:', originalFingerprint.substring(0, 100));
+      console.log('[Raymond Phone] Current fingerprint:', currentFingerprint.substring(0, 100));
+
+      // 清理旧消息
+      cleanupOldMessages();
+
+      // 重新解析 PHONE 块
+      const rawStripped = currentMessage.replace(/<think[\s\S]*?<\/think>/gi, '');
+      const normalizedRaw = normalizePhoneMarkup(rawStripped);
+      const allPhoneMatches = [...normalizedRaw.matchAll(/<PHONE>([\s\S]*?)<\/PHONE>/gi)];
+
+      if (allPhoneMatches.length > 0) {
+        // 选择最长的 PHONE 块
+        let phoneMatch = allPhoneMatches[0];
+        for (let i = 1; i < allPhoneMatches.length; i++) {
+          if (allPhoneMatches[i][1].length > phoneMatch[1].length) {
+            phoneMatch = allPhoneMatches[i];
+          }
+        }
+
+        console.log('[Raymond Phone] Re-parsing PHONE block after content change');
+        try {
+          const parsedCount = parsePhone(phoneMatch[1]);
+          console.log('[Raymond Phone] Re-parsing completed, parsed', parsedCount, 'items');
+        } catch(e) {
+          console.error('[Raymond Phone] Error in re-parsing:', e);
+        }
+      } else {
+        console.log('[Raymond Phone] No PHONE block found after content change');
+      }
+
+      // 更新原始消息记录
+      window._messageMonitors[chatId] = { timer: pollTimer, lastMessage: currentMessage };
+
+      // 注意：不要停止轮询，继续监听后续变化
+      return;
+    }
+
+    // 持续轮询，不设置超时
+    // console.log('[Raymond Phone] Message content unchanged, continuing to monitor...');
+  }, interval);
+
+  // 保存定时器引用
+  window._messageMonitors[chatId] = {
+    timer: pollTimer,
+    lastMessage: originalMessage
+  };
+
+  console.log('[Raymond Phone] Message monitor started for chat:', chatId);
+}
+
+// 清理旧消息（当 AI 消息被重新生成时）
+function cleanupOldMessages() {
+  console.log('[Raymond Phone] Calling cleanupOldPhoneMessages from messages module');
+  if (window.RaymondPhone && typeof window.RaymondPhone.cleanupOldMessages === 'function') {
+    window.RaymondPhone.cleanupOldMessages();
+  } else {
+    console.warn('[Raymond Phone] cleanupOldMessages function not available');
+  }
+}
 
   console.log('[Raymond Phone] AI response listener setup complete');
 }

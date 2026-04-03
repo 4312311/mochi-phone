@@ -319,9 +319,33 @@ function parsePhone(block) {
     // 匹配 <img ... src="..." ... />，确保src是独立的属性名
     const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
     let im;
+    console.log('[extractImgsFromText] Starting img tag matching with regex:', imgRe);
     while ((im = imgRe.exec(raw)) !== null) {
       imgs.push(im[1]);
       console.log('[extractImgsFromText] Found img:', im[1]);
+    }
+    console.log('[extractImgsFromText] Img tag matching completed, found:', imgs.length, 'images');
+
+    // 如果标准正则没匹配到，尝试更宽松的正则（不要求闭合标签）
+    if (imgs.length === 0) {
+      console.log('[extractImgsFromText] Standard regex found nothing, trying looser regex...');
+      const looseImgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi;
+      while ((im = looseImgRe.exec(raw)) !== null) {
+        imgs.push(im[1]);
+        console.log('[extractImgsFromText] Looser regex found img:', im[1]);
+      }
+      console.log('[extractImgsFromText] Looser regex found:', imgs.length, 'images');
+    }
+
+    // 如果还没匹配到，尝试最宽松的正则（匹配任何含有src属性的img）
+    if (imgs.length === 0) {
+      console.log('[extractImgsFromText] Still no images, trying ultra-loose regex...');
+      const ultraLooseImgRe = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
+      while ((im = ultraLooseImgRe.exec(raw)) !== null) {
+        imgs.push(im[1]);
+        console.log('[extractImgsFromText] Ultra-loose regex found img:', im[1]);
+      }
+      console.log('[extractImgsFromText] Ultra-loose regex found:', imgs.length, 'images');
     }
 
     // 2) 智绘姬格式 image###prompt### —— 提取 prompt，存为 pending_image 占位
@@ -713,6 +737,35 @@ function parsePhone(block) {
   console.log('[parsePhone] Finished parsing. Total items:', parsedCount);
   console.log('[parsePhone] Current threads:', Object.keys(STATE.threads));
   return parsedCount;
+}
+
+// 清理旧消息（当 AI 消息被重新生成时）
+function cleanupOldPhoneMessages() {
+  console.log('[Raymond Phone] Cleaning up old phone messages (AI regenerated)');
+
+  let cleanedCount = 0;
+
+  // 清空所有线程的消息
+  Object.keys(STATE.threads).forEach(threadId => {
+    const thread = STATE.threads[threadId];
+    if (thread && thread.messages) {
+      const oldLength = thread.messages.length;
+      thread.messages = [];
+      thread.unread = 0;
+      cleanedCount += oldLength;
+      console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength, 'messages');
+    }
+  });
+
+  console.log('[Raymond Phone] Cleanup complete, removed', cleanedCount, 'messages total');
+
+  // 刷新界面
+  refreshBadges();
+  updatePreviews();
+  if (STATE.currentView === 'thread' && STATE.currentThread) {
+    renderBubbles(STATE.currentThread);
+  }
+  saveState();
 }
 
 // Get tag attributes
@@ -1316,6 +1369,10 @@ function beautifySMSInChat(text) {
 // Initialize messages module
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
+
+  // 暴露 API 到全局，供 main.js 使用
+  window.RaymondPhone = window.RaymondPhone || {};
+  window.RaymondPhone.cleanupOldMessages = cleanupOldPhoneMessages;
 
   // 重试加载状态，直到获取到非default的字符ID（最多重试10次）
   let retryCount = 0;
