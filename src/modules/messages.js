@@ -1132,6 +1132,16 @@ function renderBubbles(threadId) {
       wrap.append(avEl, inner);
       area.append(wrap); return;
     }
+    // ── 图片消息 ──
+    if (msg.type === 'image') {
+      const isUser = msg.from === 'user';
+      const wrap = $(`<div class="rp-bwrap ${isUser ? 'rp-out' : 'rp-in'}"></div>`);
+      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble"><img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/></div>`);
+      const time = $(`<div class="rp-bts">${msg.time}</div>`);
+      wrap.append(bubble, time);
+      area.append(wrap);
+      return;
+    }
     // ── 普通文本消息 ──
     const isUser = msg.from === 'user';
     const wrap = $(`<div class="rp-bwrap ${isUser ? 'rp-out' : 'rp-in'}"></div>`);

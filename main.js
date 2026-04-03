@@ -559,17 +559,21 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         let phoneMatch = null;
         const allPhoneMatches = [...normalizedRaw.matchAll(/<PHONE>([\s\S]*?)<\/PHONE>/gi)];
         if (allPhoneMatches.length > 0) {
-          // 取最后一个匹配（真正的 PHONE 块，不是思维链中的示例）
-          phoneMatch = allPhoneMatches[allPhoneMatches.length - 1];
-          console.log('[Raymond Phone] Found', allPhoneMatches.length, 'PHONE blocks, using the last one');
-          // 验证提取的块是否包含实际的标签内容
-          const phoneContent = phoneMatch[1] || '';
-          const hasRealTags = /<(SMS|GMSG|GVOICE|GHONGBAO|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(phoneContent);
-          console.log('[Raymond Phone] Last PHONE block has real tags:', hasRealTags);
-          if (!hasRealTags && allPhoneMatches.length > 1) {
-            // 如果最后一个块没有实际标签，尝试前一个
-            console.log('[Raymond Phone] Last PHONE block has no real tags, trying previous one');
-            phoneMatch = allPhoneMatches[allPhoneMatches.length - 2];
+          // 从后向前找，找到第一个包含真实标签的PHONE块
+          for (let i = allPhoneMatches.length - 1; i >= 0; i--) {
+            const candidate = allPhoneMatches[i];
+            const phoneContent = candidate[1] || '';
+            const hasRealTags = /<(SMS|GMSG|GVOICE|GHONGBAO|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(phoneContent);
+            if (hasRealTags) {
+              phoneMatch = candidate;
+              console.log('[Raymond Phone] Found', allPhoneMatches.length, 'PHONE blocks, using block', i, 'which has real tags');
+              break;
+            }
+          }
+          // 如果都没找到真实标签，就用最后一个
+          if (!phoneMatch && allPhoneMatches.length > 0) {
+            phoneMatch = allPhoneMatches[allPhoneMatches.length - 1];
+            console.log('[Raymond Phone] No PHONE block has real tags, using the last one as fallback');
           }
         }
         const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(normalizedRaw);
