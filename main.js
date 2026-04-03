@@ -179,6 +179,12 @@ async function init() {
   const staleCSS = document.getElementById('rp-phone-css');
   if (staleCSS) staleCSS.remove();
 
+  // 清空指纹，防止热重载后第一条消息被跳过
+  window._lastAiFingerprint = null;
+  window._pendingPhoneReply = null;
+
+  console.log('[Raymond Phone] Fingerprint reset for hot-reload');
+
   // 注入CSS
   injectStyles();
 
@@ -358,93 +364,146 @@ function setupCharacterSwitchListener() {
 
 // 监听AI回复消息，解析SMS格式
 function setupAIResponseListener() {
-  if (window.SillyTavern && window.eventSource && window.event_types) {
-    // 使用 SillyTavern 的 eventSource API 监听消息事件
-    const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
-    eventKeys.forEach(key => {
-      const eventType = window.event_types[key];
-      if (eventType) {
-        try {
-          window.eventSource.on(eventType, () => {
-            // 获取最后一条 AI 消息
-            const ctx = getContext();
-            const chat = ctx?.chat;
-            if (!chat?.length) return;
+  console.log('[Raymond Phone] Setting up AI response listener...');
 
-            const lastAI = [...chat].reverse().find(m => !m.is_user);
-            if (!lastAI?.mes) return;
-
-            const raw = lastAI.mes;
-            console.log('[Raymond Phone] New AI message received, checking for PHONE tags...');
-            console.log('[Raymond Phone] Message preview:', raw.substring(0, 200));
-
-            // 检查是否包含 PHONE 标签
-            const phoneMatch = raw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
-            if (phoneMatch) {
-              console.log('[Raymond Phone] Found PHONE block in AI response:', phoneMatch[1]);
-              // 解析 PHONE 块
-              parsePhone(phoneMatch[1]);
-            } else {
-              console.log('[Raymond Phone] No PHONE tag found in message');
-            }
-          });
-        } catch(e) {
-          console.warn('[Raymond Phone] Event listener setup failed for:', key, e);
-        }
-      }
-    });
-    console.log('[Raymond Phone] AI response listener setup (using eventSource)');
-  } else {
-    // 兜底方案：使用 MutationObserver 监听 DOM 变化
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          // 检查是否有新的消息元素
-          const newMessages = mutation.addedNodes;
-          newMessages.forEach((node) => {
-            if (node.nodeType === 1 && node.classList.contains('mes') && !node.classList.contains('is_user')) {
-              // 找到消息文本元素
-              const textEl = node.querySelector('.mes_text');
-              if (textEl) {
-                // 使用 innerHTML 而不是 textContent，以获取 HTML 标签
-                const text = textEl.innerHTML || textEl.textContent || textEl.innerText;
-                console.log('[Raymond Phone] New AI message (DOM), checking for PHONE tags...');
-                console.log('[Raymond Phone] Message preview:', text.substring(0, 200));
-
-                // 检查是否包含PHONE标签
-                const phoneMatch = text.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
-                if (phoneMatch) {
-                  console.log('[Raymond Phone] Found PHONE block in AI response:', phoneMatch[1]);
-                  // 解析PHONE块
-                  parsePhone(phoneMatch[1]);
-                } else {
-                  console.log('[Raymond Phone] No PHONE tag found in message');
-                }
-              }
-            }
-          });
-        }
-      });
-    });
-
-    // 开始观察消息容器
-    const messagesContainer = document.querySelector('.chat-messages');
-    if (messagesContainer) {
-      observer.observe(messagesContainer, {
-        childList: true,
-        subtree: true
-      });
-      console.log('[Raymond Phone] AI response listener setup (using MutationObserver)');
-    }
+  // 检查是否支持 eventSource
+  if (!window.eventSource || !window.event_types) {
+    console.warn('[Raymond Phone] eventSource or event_types not available');
+    return;
   }
+
+  console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(window.event_types));
+
+  // 监听多个事件类型（兼容不同 ST 版本）
+  const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
+  eventKeys.forEach(key => {
+    const eventType = window.event_types[key];
+    if (eventType) {
+      console.log(`[Raymond Phone] Setting up listener for ${key} (${eventType})`);
+
+      window.eventSource.on(eventType, () => {
+        console.log(`[Raymond Phone] Event triggered: ${key}`);
+
+        // 获取上下文
+        const ctx = getContext();
+        if (!ctx) {
+          console.warn('[Raymond Phone] getContext returned null');
+          return;
+        }
+
+        console.log('[Raymond Phone] Context:', { chatId: ctx.chatId, chatLength: ctx.chat?.length });
+
+        const chat = ctx.chat;
+        if (!chat?.length) {
+          console.warn('[Raymond Phone] No chat messages');
+          return;
+        }
+
+        // 获取最后一条 AI 消息
+        const lastAI = [...chat].reverse().find(m => !m.is_user);
+        if (!lastAI) {
+          console.warn('[Raymond Phone] No AI message found');
+          return;
+        }
+
+        console.log('[Raymond Phone] Last AI message:', {
+          is_user: lastAI.is_user,
+          mesLength: lastAI.mes?.length,
+          mesPreview: lastAI.mes?.substring(0, 150)
+        });
+
+        if (!lastAI.mes) {
+          console.warn('[Raymond Phone] AI message has no text');
+          return;
+        }
+
+        const raw = lastAI.mes;
+
+        // 指纹防重
+        const fp = `${ctx.chatId}|${raw.length}|${raw.slice(0, 24)}|${raw.slice(-24)}`;
+        if (fp === window._lastAiFingerprint) {
+          console.log('[Raymond Phone] Message already processed (same fingerprint)');
+          return;
+        }
+        window._lastAiFingerprint = fp;
+
+        // 检查是否包含 PHONE 标签
+        const hasPhoneOpen = /<PHONE\b/i.test(raw);
+        const hasPhoneClose = /<\/PHONE>/i.test(raw);
+        const hasSmsOpen = /<SMS\b/i.test(raw);
+        const hasSmsClose = /<\/SMS>/i.test(raw);
+
+        console.log('[Raymond Phone] Message structure check:', {
+          hasPhoneOpen,
+          hasPhoneClose,
+          hasSmsOpen,
+          hasSmsClose
+        });
+
+        // 流式生成中间态保护
+        if (hasPhoneOpen && !hasPhoneClose) {
+          console.log('[Raymond Phone] EARLY RETURN: PHONE not closed (streaming)');
+          return;
+        }
+        if (hasSmsOpen && !hasSmsClose) {
+          console.log('[Raymond Phone] EARLY RETURN: SMS not closed (streaming)');
+          return;
+        }
+
+        // 匹配 PHONE 块
+        const phoneMatch = raw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+        const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(raw);
+
+        console.log('[Raymond Phone] Parsing result:', {
+          hasPhoneBlock: !!phoneMatch,
+          hasBarePhoneTags,
+          phoneBlockContent: phoneMatch ? phoneMatch[1].substring(0, 100) : null
+        });
+
+        if (phoneMatch) {
+          console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
+          try {
+            const parsedCount = parsePhone(phoneMatch[1]);
+            console.log('[Raymond Phone] parsePhone returned:', parsedCount, 'items');
+
+            if (parsedCount > 0) {
+              console.log('[Raymond Phone] Successfully parsed', parsedCount, 'phone message(s)');
+              // 清理 pending 状态
+              if (window._pendingPhoneReply) {
+                window._pendingPhoneReply = null;
+              }
+            } else {
+              console.warn('[Raymond Phone] parsePhone returned 0 items, but PHONE block exists');
+            }
+          } catch(e) {
+            console.error('[Raymond Phone] Error in parsePhone:', e);
+          }
+        } else if (hasBarePhoneTags) {
+          console.log('[Raymond Phone] Found bare phone tags (no PHONE wrapper)');
+          try {
+            const parsedCount = parsePhone(raw);
+            console.log('[Raymond Phone] parsePhone (bare tags) returned:', parsedCount, 'items');
+          } catch(e) {
+            console.error('[Raymond Phone] Error in parsePhone (bare):', e);
+          }
+        } else {
+          console.log('[Raymond Phone] No PHONE tags found in message');
+        }
+      });
+    }
+  });
+
+  console.log('[Raymond Phone] AI response listener setup complete');
 }
 
-// 自动初始化
+  // 自动初始化
 $(async function() {
   try {
+    console.log('[Raymond Phone] Starting initialization...');
     await init();
     setupCharacterSwitchListener();
     setupAIResponseListener();
+    console.log('[Raymond Phone] All initializations complete');
   } catch(e) {
     console.error('[Raymond Phone] init failed:', e);
   }
