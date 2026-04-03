@@ -1,0 +1,188 @@
+.rp-out { align-items:flex-end; }
+.rp-in  { align-items:flex-start; }
+/* 编辑/删除按钮横排容器 */
+.rp-btn-row { display:flex; flex-direction:row; align-items:center; gap:2px; }
+.rp-bubble { max-width:72%; padding:9px 13px; border-radius:19px; font-size:13px; line-height:1.45; word-break:break-word; }
+.rp-sent { background:var(--rp-sent-bg); color:#fff; border-radius:var(--rp-bubble-radius-out); }
+.rp-recv { background:var(--rp-recv-bg); color:var(--rp-recv-color); border-radius:var(--rp-bubble-radius-in); }
+.rp-bts  { font-size:10px; color:var(--rp-bts-color); padding:0 4px; }
+
+/* composer */
+#rp-composer {
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  padding:8px 12px 22px !important;
+  border-top:1px solid var(--rp-composer-bd) !important;
+  flex-shrink:0 !important;
+  background:var(--rp-composer-bg) !important;
+}
+#rp-input {
+  flex:1 !important;
+  background:var(--rp-input-bg) !important;
+  border:1px solid var(--rp-input-bd) !important;
+  border-radius:var(--rp-input-radius) !important;
+  padding:9px 16px !important;
+  color:var(--rp-input-color) !important;
+  box-shadow:var(--rp-input-sh) !important;
+  transition:box-shadow .18s ease, border-color .18s ease !important;
+  font-size:13px !important;
+  outline:none !important;
+  font-family:inherit !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+#rp-input::placeholder { color:rgba(0,0,0,.4); }
+#rp-input:focus { box-shadow:var(--rp-input-focus-sh) !important; border-color:rgba(0,0,0,.3) !important; }
+
+/* ✅ FIX2: 强制显示发送按钮,防止 SillyTavern 全局 CSS 覆盖 */
+#rp-send {
+  width:var(--rp-send-size) !important;
+  height:var(--rp-send-size) !important;
+  min-width:var(--rp-send-size) !important;
+  border-radius:var(--rp-send-radius) !important;
+  background:var(--rp-send-bg) !important;
+  border:none !important;
+  color:#fff !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  cursor:pointer !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  flex-shrink:0 !important;
+  box-shadow:var(--rp-send-sh) !important;
+  transition:var(--rp-transition), opacity .15s !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+  padding:0 !important;
+  margin:0 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+
+padding-left:6px; padding-right:16px;
+  position:relative;
+  background:transparent;
+  border-bottom:1px solid transparent;
+}
+
+.rp-nav-title {position:absolute;left:0;right:0;text-align:center;pointer-events:none;font-size:16px;font-weight:600;color:var(--rp-nav-title);}
+.rp-back {
+  background:none !important; border:none !important;
+  color:var(--rp-nav-btn) !important; font-size:30px !important;
+  line-height:1 !important; cursor:pointer !important;
+  padding:0 6px !important; font-family:inherit !important;
+  display:inline-flex !important; visibility:visible !important;
+  opacity:1 !important; pointer-events:auto !important;
+}
+.rp-nav-add {
+  background:none !important; border:none !important;
+  color:var(--rp-nav-btn) !important; font-size:28px !important;
+  line-height:1 !important; cursor:pointer !important;
+  padding:0 6px !important; font-family:inherit !important;
+  font-weight:300 !important; display:inline-flex !important;
+  visibility:visible !important; opacity:1 !important;
+  pointer-events:auto !important;
+}
+.rp-thread-hd { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.rp-hd-av { width:32px; height:32px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; }
+.rp-hd-name { font-size:11px; color:var(--rp-hd-name); }
+
+/* ── ADD CONTACT MODAL ── */
+/* ✅ FIX3: modal 已移至 #rp-screen 内部,position:absolute; inset:0 现在正确覆盖手机屏幕 */
+#rp-add-modal {
+  position:absolute; inset:0; z-index:600;
+  background:rgba(0,0,0,.4); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+}
+#rp-add-form {
+  background:#fff; border-radius:18px;
+  padding:20px; width:100%; max-width:240px;
+  box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+#rp-add-form h3 {
+  margin:0 0 16px; font-size:18px; font-weight:600; color:#000; text-align:center;
+}
+#rp-add-form input {
+  width:100%; padding:10px 12px; margin-bottom:12px;
+  border:1px solid rgba(0,0,0,.15); border-radius:10px;
+  font-size:14px; font-family:inherit; color:#000;
+  background:rgba(0,0,0,.02); outline:none; box-sizing:border-box;
+}
+#rp-add-form input::placeholder { color:rgba(0,0,0,.4); }
+#rp-add-btns {
+  display:flex; gap:10px; margin-top:16px;
+}
+#rp-add-btns button {
+  flex:1 !important; padding:10px !important; border:none !important; border-radius:10px !important;
+  font-size:14px !important; font-weight:600 !important; cursor:pointer !important;
+  font-family:inherit !important; transition:opacity .15s;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  visibility:visible !important; opacity:1 !important; pointer-events:auto !important;
+}
+#rp-add-btns button:hover { opacity:.8 !important; }
+#rp-add-cancel { background:#e9ecef !important; color:#000 !important; }
+
+/* ── DARK MESSAGES ── */
+
+.rp-dark .rp-thread{border-bottom-color:rgba(255,255,255,.05)}
+.rp-dark .rp-thread:hover{background:rgba(255,255,255,.03)}
+.rp-dark .rp-tn{color:#dde0f2}
+.rp-dark .rp-tp{color:rgba(160,175,255,.46)}
+.rp-dark .rp-tt{color:rgba(160,175,255,.36)}
+.rp-dark .rp-nav-bar{background:#0c0c1a;border-bottom-color:rgba(255,255,255,.07)}
+.rp-dark .rp-nav-title{color:#dde0f2!important}
+.rp-dark .rp-back{color:#7090f0 !important}
+.rp-dark .rp-nav-add{color:#7090f0 !important}
+.rp-dark .rp-hd-name{color:rgba(160,175,255,.62)}
+/* ── DARK THREAD ── */
+
+
+.rp-dark .rp-recv{background:#161628;color:#dde0f2}
+.rp-dark .rp-bts{color:rgba(160,175,255,.3)}
+.rp-dark #rp-composer{background:#0c0c1a !important;border-top-color:rgba(255,255,255,.06) !important}
+.rp-dark #rp-input{background:rgba(255,255,255,.05) !important;border-color:rgba(255,255,255,.1) !important;color:#dde0f2 !important}
+.rp-dark #rp-input::placeholder{color:rgba(160,175,255,.3)}
+.rp-dark #rp-pending-queue{background:rgba(37,99,235,.05);border-top-color:rgba(37,99,235,.1)}
+.rp-dark .rp-pending-item{color:#8aaef0;background:rgba(37,99,235,.12)}
+.rp-dark .rp-pending-hint{color:rgba(160,175,255,.3)}
+.rp-dark #rp-add-form{background:#12122a}
+.rp-dark #rp-add-form h3{color:#dde0f2}
+.rp-dark #rp-add-form input{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#dde0f2}
+.rp-dark #rp-add-cancel{background:#1c1c38 !important;color:#dde0f2 !important}
+.rp-dark #rp-notif-banner{background:rgba(8,8,20,.95);border-color:rgba(255,255,255,.08)}
+.rp-dark .rp-nb-from{color:rgba(160,175,255,.5)}
+.rp-dark .rp-nb-text{color:#dde0f2}
+.rp-dark .rp-nb-time{color:rgba(160,175,255,.36)}
+
+/* ── DARK THREAD ── */
+
+
+.rp-dark .rp-recv{background:#161628;color:#dde0f2}
+.rp-dark .rp-bts{color:rgba(160,175,255,.3)}
+.rp-dark #rp-composer{background:#0c0c1a !important;border-top-color:rgba(255,255,255,.06) !important}
+.rp-dark #rp-input{background:rgba(255,255,255,.05) !important;border-color:rgba(255,255,255,.1) !important;color:#dde0f2 !important}
+.rp-dark #rp-input::placeholder{color:rgba(160,175,255,.3)}
+.rp-dark #rp-pending-queue{background:rgba(37,99,235,.05);border-top-color:rgba(37,99,235,.1)}
+.rp-dark .rp-pending-item{color:#8aaef0;background:rgba(37,99,235,.12)}
+.rp-dark .rp-pending-hint{color:rgba(160,175,255,.3)}
+.rp-dark #rp-add-form{background:#12122a}
+.rp-dark #rp-add-form h3{color:#dde0f2}
+.rp-dark #rp-add-form input{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#dde0f2}
+.rp-dark #rp-add-cancel{background:#1c1c38 !important;color:#dde0f2 !important}
+.rp-dark #rp-notif-banner{background:rgba(8,8,20,.95);border-color:rgba(255,255,255,.08)}
+.rp-dark .rp-nb-from{color:rgba(160,175,255,.5)}
+.rp-dark .rp-nb-text{color:#dde0f2}
+.rp-dark .rp-nb-time{color:rgba(160,175,255,.36)}
+.rp-dark #rp-home-ind{background:rgba(255,255,255,.22)}
+/* ── MOMENTS VIEW ── */
+#rp-view-moments{background:transparent !important;display:flex;flex-direction:column}
+
+#rp-moments-list{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:8px}
+#rp-moments-list::-webkit-scrollbar{display:none}
+.rp-moment{background:var(--rp-moment-card);margin-bottom:8px;padding:14px 16px}
+

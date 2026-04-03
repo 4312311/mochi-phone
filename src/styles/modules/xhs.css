@@ -157,3 +157,4 @@
 #rp-phone.rp-theme-misty #rp-xhs-post-title::placeholder,
 #rp-phone.rp-theme-misty #rp-xhs-post-body::placeholder{color:rgba(74,127,168,.5)!important}
 @keyframes rpXhsLoadingFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+

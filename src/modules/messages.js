@@ -1161,23 +1161,27 @@ function beautifySMSInChat(text) {
 // Initialize messages module
 function initSMS() {
   console.log('[Raymond Phone] Messages Module initialized');
-  
-  // 重试加载状态，直到获取到非default的字符ID
+
+  // 重试加载状态，直到获取到非default的字符ID（最多重试10次）
+  let retryCount = 0;
+  const MAX_RETRIES = 10;
+
   function tryLoadState() {
     const characterId = getCurrentCharacterId();
-    console.log('[Messages] Loading state for character:', characterId);
-    
-    if (characterId === 'default') {
+
+    if (characterId === 'default' && retryCount < MAX_RETRIES && window.SillyTavern) {
       // 还没有获取到字符ID，继续重试
-      console.log('[Messages] Waiting for character to load...');
+      retryCount++;
+      console.log(`[Messages] Waiting for character to load... (${retryCount}/${MAX_RETRIES})`);
       setTimeout(tryLoadState, 500);
     } else {
-      // 已经获取到字符ID，加载状态
+      // 已经获取到字符ID或达到最大重试次数，直接加载
+      console.log('[Messages] Loading state for character:', characterId);
       loadState();
       renderThreadList();
     }
   }
-  
+
   tryLoadState();
 
   // Bind thread item click

@@ -1,3 +1,118 @@
+/* ── GAMES FOLDER (iOS style) ── */
+.rp-folder-ico {
+  width: 52px; height: 52px; border-radius: 16px;
+  background: rgba(255,255,255,0.22);
+  border: 1px solid rgba(255,255,255,0.30);
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  gap: 3px; padding: 7px;
+  box-sizing: border-box; overflow: hidden;
+  transition: transform .14s ease, filter .14s ease;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.30));
+}
+.rp-folder-ico:active { transform: scale(.88); }
+.rp-fi-item {
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1;
+  background: transparent;
+}
+.rp-fi-empty { opacity: 0; }
+#rp-folder-modal {
+  position: absolute; inset: 0; z-index: 800;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+}
+.rp-folder-title-lbl {
+  color: rgba(255,255,255,0.92); font-size: 14px; font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55); text-align: center; letter-spacing: .8px;
+}
+.rp-folder-popup {
+  background: rgba(255,255,255,0.18); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.28); border-radius: 26px; padding: 18px 16px;
+  display: flex; flex-direction: row; gap: 14px; align-items: flex-start;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.rp-folder-item {
+  min-width: 60px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+}
+.rp-folder-item:active { transform: scale(.84); }
+.rp-folder-item-ico {
+  width: 58px; height: 58px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.rp-folder-item-ico svg { width: 34px; height: 34px; }
+.rp-folder-game-ludo,
+.rp-folder-game-2048 { color: #f6d7e3; }
+.rp-folder-item-lbl {
+  font-size: 13px; color: #f6d7e3; font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,.22); white-space: nowrap; letter-spacing: .1px;
+}
+
+/* ── Candy theme folder ── */
+#rp-phone.rp-theme-candy .rp-folder-ico {
+  background: rgba(255,200,220,0.45) !important;
+  border-color: rgba(255,180,200,0.50) !important;
+  filter: drop-shadow(0 1px 5px rgba(200,60,90,.45)) drop-shadow(0 0 8px rgba(255,255,255,.5)) !important;
+}
+#rp-phone.rp-theme-candy .rp-fi-item { background: transparent !important; }
+#rp-phone.rp-theme-candy .rp-fi-empty { opacity: 0 !important; }
+#rp-phone.rp-theme-candy #rp-folder-modal {
+  background: rgba(180,60,90,0.28);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+#rp-phone.rp-theme-candy .rp-folder-popup {
+  background: rgba(255,228,238,0.55);
+  border-color: rgba(220,130,165,0.35);
+  box-shadow: 0 8px 32px rgba(200,100,140,0.20), inset 0 1px 0 rgba(255,255,255,0.65);
+}
+#rp-phone.rp-theme-candy .rp-folder-title-lbl {
+  color: rgba(120,20,50,0.92);
+  text-shadow: 0 1px 4px rgba(255,255,255,0.55);
+}
+#rp-phone.rp-theme-candy .rp-folder-item-lbl {
+  color: #ffeaf2;
+  text-shadow: 0 1px 2px rgba(120,20,50,.38);
+}
+#rp-phone.rp-theme-candy .rp-folder-game-ludo,
+#rp-phone.rp-theme-candy .rp-folder-game-2048 {
+  color:#ffeaf2 !important;
+  filter:drop-shadow(0 0 5px rgba(255,255,255,.55)) drop-shadow(0 1px 3px rgba(120,20,50,.38)) !important;
+}
+
+/* ── Star theme folder ── */
+#rp-phone.rp-theme-star .rp-folder-ico {
+  background: rgba(30,10,80,0.70) !important;
+  border-color: rgba(160,110,255,0.50) !important;
+  filter: drop-shadow(0 0 8px rgba(160,100,255,.65)) drop-shadow(0 1px 3px rgba(0,0,0,.6)) !important;
+}
+#rp-phone.rp-theme-star .rp-fi-item { background: transparent !important; filter: drop-shadow(0 0 3px rgba(200,170,255,.6)); }
+#rp-phone.rp-theme-star .rp-fi-empty { opacity: 0 !important; }
+#rp-phone.rp-theme-star #rp-folder-modal {
+  background: rgba(4,2,18,0.72);
+}
+#rp-phone.rp-theme-star .rp-folder-popup {
+  background: rgba(15,7,48,0.82);
+  border-color: rgba(150,100,255,0.35);
+  box-shadow: 0 8px 32px rgba(80,40,200,0.35), inset 0 1px 0 rgba(170,130,255,0.20);
+}
+#rp-phone.rp-theme-star .rp-folder-title-lbl {
+  color: rgba(220,200,255,0.95);
+  text-shadow: 0 0 12px rgba(160,100,255,0.6), 0 1px 4px rgba(0,0,0,0.6);
+}
+#rp-phone.rp-theme-star .rp-folder-item-lbl {
+  color: #f7f2ff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+#rp-phone.rp-theme-star .rp-folder-game-ludo,
+#rp-phone.rp-theme-star .rp-folder-game-2048 {
+  color:#f7f2ff !important;
+  filter:drop-shadow(0 0 6px rgba(180,150,255,.55)) drop-shadow(0 1px 3px rgba(0,0,0,.42)) !important;
+}
+
 /* ── Misty theme folder ── */
 #rp-phone.rp-theme-misty .rp-folder-ico {
   background: rgba(190,215,240,0.50) !important;
@@ -103,3 +218,70 @@
 .rp-api-save-row{display:flex;gap:8px;margin-top:16px}
 .rp-api-save-btn{flex:1;padding:9px;background:linear-gradient(135deg,#f472b6,#a855f7);color:#fff;border:none;border-radius:16px;font-size:13px;font-weight:700;cursor:pointer}
 .rp-api-cancel-btn{padding:9px 14px;background:rgba(120,60,180,.08);border:1px solid rgba(168,85,247,.2);border-radius:16px;font-size:13px;color:#7c3aed;cursor:pointer}
+
+/* ── 2048 tile colors (Candy warm) ── */
+/* Candy: pink-rose palette */
+.g2048-tile[data-v="2"]{background:#f9dce5;color:#9a3555}
+.g2048-tile[data-v="4"]{background:#f5c6d5;color:#8a2a4a}
+.g2048-tile[data-v="8"]{background:#f0a0b8;color:#fff}
+.g2048-tile[data-v="16"]{background:#e87aa0;color:#fff}
+.g2048-tile[data-v="32"]{background:#e05888;color:#fff}
+.g2048-tile[data-v="64"]{background:#d83070;color:#fff}
+.g2048-tile[data-v="128"]{background:#c82068;color:#ffd6e8}
+.g2048-tile[data-v="256"]{background:linear-gradient(135deg,#e03878,#c02060);color:#fff}
+.g2048-tile[data-v="512"]{background:linear-gradient(135deg,#d02870,#a81858);color:#fff}
+.g2048-tile[data-v="1024"]{background:linear-gradient(135deg,#c01868,#900048);color:#fff}
+.g2048-tile[data-v="2048"]{background:linear-gradient(135deg,#ff6699,#e0205a,#c01050);color:#fff}
+
+/* ── Star theme tiles (purple) ── */
+#rp-phone.rp-theme-star .g2048-tile[data-v="2"]{background:rgba(55,15,105,.55);color:#c8b8ff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="4"]{background:rgba(70,20,135,.65);color:#d4c8ff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="8"]{background:rgba(90,28,170,.75);color:#e8e0ff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="16"]{background:rgba(110,32,195,.8);color:#f0ebff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="32"]{background:rgba(135,22,205,.85);color:#fff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="64"]{background:rgba(155,18,215,.9);color:#fff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="128"]{background:linear-gradient(135deg,rgba(80,8,150,.95),rgba(140,10,200,.95));color:#ffd8ff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="256"]{background:linear-gradient(135deg,rgba(100,5,160,.95),rgba(160,8,210,.95));color:#fff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="512"]{background:linear-gradient(135deg,rgba(120,0,170,.95),rgba(180,5,220,.95));color:#fff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="1024"]{background:linear-gradient(135deg,#4c0080,#7c00c8);color:#fff}
+#rp-phone.rp-theme-star .g2048-tile[data-v="2048"]{background:linear-gradient(135deg,#9333ea,#c026d3);color:#fff}
+
+/* ── Misty theme tiles (blue) ── */
+#rp-phone.rp-theme-misty .g2048-tile[data-v="2"]{background:rgba(185,218,242,.52);color:#0e2540}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="4"]{background:rgba(165,208,238,.62);color:#0e2540}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="8"]{background:rgba(82,158,222,.78);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="16"]{background:rgba(58,140,212,.84);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="32"]{background:rgba(38,118,195,.88);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="64"]{background:rgba(18,95,178,.92);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="128"]{background:linear-gradient(135deg,rgba(45,125,205,.95),rgba(20,85,175,.95));color:#d8f0ff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="256"]{background:linear-gradient(135deg,rgba(30,108,192,.95),rgba(10,70,162,.95));color:#e8f5ff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="512"]{background:linear-gradient(135deg,rgba(15,90,178,.95),rgba(5,55,148,.95));color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="1024"]{background:linear-gradient(135deg,#0369a1,#0c4a6e);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="2048"]{background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff}
+#rp-phone.rp-theme-misty .g2048-tile[data-v="high"]{background:#073763;color:#d0eeff}
+
+/* Candy theme 2048 input explicit colors */
+#rp-phone.rp-theme-candy #g2048-input{background:rgba(255,255,255,.92)!important;border-color:rgba(220,130,165,.4)!important;color:#3a1020!important}
+#rp-phone.rp-theme-candy #g2048-input::placeholder{color:rgba(58,16,32,.38)!important}
+/* ── COMPOSE MODAL ── */
+/* ── Compose Modal ── */
+/* ══════════════════════════════════════════════════════════
+   COMPOSE MODAL - 磨砂壁纸玻璃效果(三主题通用)
+   结构:::before=模糊壁纸  ::after=主题色调层  子元素z-index:2
+   ══════════════════════════════════════════════════════════ */
+#rp-compose-modal {
+  position:absolute; inset:0; z-index:700;
+  background: transparent;
+  display:flex; flex-direction:column;
+  overflow: hidden;
+}
+/* 弹起动画 */
+@keyframes rp-compose-rise {
+  from { opacity:0; transform: translateY(28px) scale(.98); }
+  to   { opacity:1; transform: translateY(0)   scale(1);   }
+}
+#rp-compose-modal[style*="block"],
+#rp-compose-modal:not([style*="none"]) {
+  animation: rp-compose-rise .28s cubic-bezier(.22,1,.36,1) both;
+}
+

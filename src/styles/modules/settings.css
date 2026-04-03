@@ -1,3 +1,83 @@
+/* ── SETTINGS VIEW ── */
+#rp-view-settings{background:transparent;display:flex;flex-direction:column;overflow-y:auto}
+#rp-view-api-settings{background:transparent;display:flex;flex-direction:column}
+.rp-dark #rp-view-settings{background:transparent}
+.rp-set-section{background:#fff;border-radius:12px;margin:10px 12px 0;padding:0 14px;overflow:hidden}
+.rp-dark .rp-set-section{background:rgba(255,255,255,.04)}
+.rp-set-section-title{font-size:12px;font-weight:600;color:#8a8a9a;text-transform:uppercase;letter-spacing:.05em;margin:16px 12px 5px;padding:0}
+.rp-dark .rp-set-section-title{color:#6a6a7a}
+.rp-set-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid rgba(0,0,0,.06);gap:10px;min-height:44px}
+.rp-dark .rp-set-row{border-bottom-color:rgba(255,255,255,.05)}
+.rp-set-row:last-child{border-bottom:none}
+.rp-set-key{font-size:15px;color:#1a1a2e;flex:1}
+.rp-dark .rp-set-key{color:#c8cce8}
+.rp-set-hint{font-size:12px;color:#8a8a9a;flex:1}
+.rp-dark .rp-set-hint{color:rgba(200,190,255,.45)}
+.rp-set-select{font-size:14px;color:#3a3a5e;background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.1);border-radius:8px;padding:4px 8px;font-family:inherit;max-width:150px;outline:none}
+.rp-dark .rp-set-select{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:#c0c4e0}
+.rp-avatar-upload-btn{font-size:13.5px;color:#2563eb;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.18);border-radius:8px;padding:6px 12px;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;gap:4px}
+.rp-dark .rp-avatar-upload-btn{color:#7090f0;background:rgba(112,144,240,.12);border-color:rgba(112,144,240,.2)}
+.rp-set-upload-btn{font-size:13.5px;font-family:inherit;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;background:rgba(0,0,0,.06);color:#333;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:4px}
+.rp-dark .rp-set-upload-btn{background:rgba(255,255,255,.08);color:#c8cce8}
+.rp-wall-reset-btn{background:rgba(0,0,0,.05)!important;color:#666!important}
+.rp-dark .rp-wall-reset-btn{background:rgba(255,255,255,.06)!important;color:rgba(200,190,255,.6)!important}
+.rp-set-avatar-preview{width:38px;height:38px;border-radius:19px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+
+/* ===== DIARY VIEW ===== */
+#rp-view-diary{background:transparent;display:flex;flex-direction:column;overflow:hidden}
+.rp-diary-gen-btn{background:none;border:none;cursor:pointer;color:var(--rp-nav-btn,#2563eb);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .3s;flex-shrink:0}
+.rp-diary-gen-btn:disabled{opacity:.35;cursor:default}
+.rp-diary-gen-btn.rp-spinning{animation:rpSpin .7s linear infinite}
+.rp-diary-entry{margin-bottom:14px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.6);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.rp-diary-hd{padding:10px 14px 6px}
+.rp-diary-meta{display:flex;flex-direction:column}
+.rp-diary-author{font-size:13px;font-weight:600;color:#1a1a2e}
+.rp-diary-date{font-size:11px;color:#888}
+.rp-diary-body{font-size:14px;line-height:1.7;color:#1a1a2e;padding:0 14px 10px;word-break:break-word}
+.rp-diary-ai-badge{font-size:10px;background:rgba(236,72,153,.12);color:#ec4899;border-radius:8px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.rp-diary-reply{background:rgba(200,50,100,.04);border-top:1px solid rgba(200,50,100,.08);padding:8px 14px}
+.rp-diary-reply-name{font-size:12px;font-weight:600;color:#c0306a;margin-bottom:2px}
+.rp-diary-reply-text{font-size:13px;color:#333;line-height:1.6}
+.rp-diary-compose{flex-shrink:0;padding:10px 14px 18px;border-top:1px solid rgba(192,48,106,.1);display:flex;flex-direction:column;gap:8px}
+.rp-diary-input{width:100%;box-sizing:border-box;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;background:rgba(255,255,255,.7)!important;color:#1a1a2e!important;line-height:1.6}
+.rp-diary-input::placeholder{color:rgba(60,60,80,.38)}
+.rp-diary-send-btn{align-self:flex-end;padding:8px 22px;border-radius:20px;border:none;cursor:pointer;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#f97316,#ec4899)}
+.rp-diary-send-btn:disabled{opacity:.45;cursor:default}
+.rp-diary-empty{text-align:center;color:rgba(0,0,0,.3);padding:40px 0;font-size:14px}
+.rp-dark .rp-diary-entry{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
+.rp-dark .rp-diary-author{color:#dde0f2}
+.rp-dark .rp-diary-date{color:rgba(200,190,255,.5)}
+.rp-dark .rp-diary-body{color:#d5d8f0}
+.rp-dark .rp-diary-reply{background:rgba(255,255,255,.04);border-top-color:rgba(255,255,255,.07)}
+.rp-dark .rp-diary-reply-text{color:#c8cce8}
+.rp-dark .rp-diary-compose{border-top-color:rgba(255,255,255,.07)}
+.rp-dark .rp-diary-input{background:rgba(255,255,255,.07)!important;border-color:rgba(255,255,255,.12);color:#e0e4ff!important}
+#rp-phone.rp-theme-star .rp-diary-entry{background:rgba(30,15,80,.55);border-color:rgba(140,110,255,.25)}
+#rp-phone.rp-theme-star .rp-diary-author{color:#d4c8ff}
+#rp-phone.rp-theme-star .rp-diary-date{color:rgba(180,165,255,.55)}
+#rp-phone.rp-theme-star .rp-diary-body{color:#c8c0f0}
+#rp-phone.rp-theme-star .rp-diary-reply{background:rgba(140,100,255,.08);border-top-color:rgba(140,110,255,.15)}
+#rp-phone.rp-theme-star .rp-diary-reply-name{color:#a78bfa}
+#rp-phone.rp-theme-star .rp-diary-reply-text{color:#c0b8e8}
+#rp-phone.rp-theme-star .rp-diary-compose{border-top-color:rgba(140,110,255,.2)}
+#rp-phone.rp-theme-star .rp-diary-input{background:rgba(28,14,72,.65)!important;border-color:rgba(140,110,255,.3);color:#e0d8ff!important}
+#rp-phone.rp-theme-star .rp-diary-input::placeholder{color:rgba(180,165,255,.45)}
+#rp-phone.rp-theme-star .rp-diary-send-btn{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+#rp-phone.rp-theme-star .rp-diary-empty{color:rgba(180,165,255,.35)}
+#rp-phone.rp-theme-star #rp-gen-diary{color:#a78bfa}
+#rp-phone.rp-theme-misty .rp-diary-entry{background:rgba(235,248,255,.76);border-color:rgba(100,170,220,.35);backdrop-filter:blur(10px) saturate(1.2);-webkit-backdrop-filter:blur(10px) saturate(1.2)}
+#rp-phone.rp-theme-misty .rp-diary-author{color:#0a1828;font-weight:700}
+#rp-phone.rp-theme-misty .rp-diary-date{color:rgba(40,80,130,.8)}
+#rp-phone.rp-theme-misty .rp-diary-body{color:#0d1e30;line-height:1.75}
+#rp-phone.rp-theme-misty .rp-diary-reply{background:rgba(60,120,180,.12);border-top-color:rgba(100,170,220,.28)}
+#rp-phone.rp-theme-misty .rp-diary-reply-name{color:#1a5a8a;font-weight:700}
+#rp-phone.rp-theme-misty .rp-diary-reply-text{color:#0d1e30}
+#rp-phone.rp-theme-misty .rp-diary-compose{border-top-color:rgba(100,170,220,.2)}
+#rp-phone.rp-theme-misty .rp-diary-input{background:rgba(235,248,255,.72)!important;border-color:rgba(100,170,220,.4);color:#0a1828!important}
+#rp-phone.rp-theme-misty .rp-diary-input::placeholder{color:rgba(44,90,140,.4)}
+#rp-phone.rp-theme-misty .rp-diary-send-btn{background:linear-gradient(135deg,#0ea5e9,#38bdf8)}
+#rp-phone.rp-theme-misty .rp-diary-empty{color:rgba(44,74,106,.4)}
+#rp-phone.rp-theme-misty #rp-gen-diary{color:rgba(220,238,252,.90)!important;filter:drop-shadow(0 1px 3px rgba(0,20,60,.43))!important}
 /* Candy gen-diary explicit (candy has no theme class, CSS var handles it but be safe) */
 #rp-gen-diary{color:var(--rp-nav-btn,#c0306a)}
 /* 图标颜色由 CSS color: var(--rp-clock-color) + SVG currentColor 统一管理，与时钟颜色始终一致 */
@@ -74,3 +154,4 @@
 #rp-phone.rp-theme-misty #g2048-chat .game-msg-sys{color:rgba(200,228,255,.92);text-shadow:0 0 4px rgba(0,10,40,.8)}
 #rp-phone.rp-theme-misty #g2048-chat .game-msg-user{color:rgba(255,210,228,.92);text-shadow:0 0 4px rgba(0,10,40,.8)}
 #rp-phone.rp-theme-misty #g2048-chat .game-msg-char{color:rgba(185,228,255,.95)}
+
