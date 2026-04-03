@@ -1,0 +1,25 @@
+#rp-view-settings{background:transparent;display:flex;flex-direction:column;overflow-y:auto}
+#rp-view-api-settings{background:transparent;display:flex;flex-direction:column}
+.rp-dark #rp-view-settings{background:transparent}
+.rp-set-section{background:#fff;border-radius:12px;margin:10px 12px 0;padding:0 14px;overflow:hidden}
+.rp-dark .rp-set-section{background:rgba(255,255,255,.04)}
+.rp-set-section-title{font-size:12px;font-weight:600;color:#8a8a9a;text-transform:uppercase;letter-spacing:.05em;margin:16px 12px 5px;padding:0}
+.rp-dark .rp-set-section-title{color:#6a6a7a}
+.rp-set-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid rgba(0,0,0,.06);gap:10px;min-height:44px}
+.rp-dark .rp-set-row{border-bottom-color:rgba(255,255,255,.05)}
+.rp-set-row:last-child{border-bottom:none}
+.rp-set-key{font-size:15px;color:#1a1a2e;flex:1}
+.rp-dark .rp-set-key{color:#c8cce8}
+.rp-set-hint{font-size:12px;color:#8a8a9a;flex:1}
+.rp-dark .rp-set-hint{color:rgba(200,190,255,.45)}
+.rp-set-select{font-size:14px;color:#3a3a5e;background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.1);border-radius:8px;padding:4px 8px;font-family:inherit;max-width:150px;outline:none}
+.rp-dark .rp-set-select{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:#c0c4e0}
+.rp-avatar-upload-btn{font-size:13.5px;color:#2563eb;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.18);border-radius:8px;padding:6px 12px;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;gap:4px}
+.rp-dark .rp-avatar-upload-btn{color:#7090f0;background:rgba(112,144,240,.12);border-color:rgba(112,144,240,.2)}
+.rp-set-upload-btn{font-size:13.5px;font-family:inherit;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;background:rgba(0,0,0,.06);color:#333;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:4px}
+.rp-dark .rp-set-upload-btn{background:rgba(255,255,255,.08);color:#c8cce8}
+.rp-wall-reset-btn{background:rgba(0,0,0,.05)!important;color:#666!important}
+.rp-dark .rp-wall-reset-btn{background:rgba(255,255,255,.06)!important;color:rgba(200,190,255,.6)!important}
+.rp-set-avatar-preview{width:38px;height:38px;border-radius:19px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+
+/* ===== DIARY VIEW ===== */

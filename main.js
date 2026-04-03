@@ -6,8 +6,8 @@
 // 1. 导入HTML模板
 import { RP_PHONE_HTML } from './src/html.js';
 
-// 2. 导入CSS样式模块
-import { RP_PHONE_CSS } from './src/styles/css.js';
+// 2. 导入CSS样式模块（模块化）
+import { RP_PHONE_CSS } from './src/styles/index.js';
 
 // 3. 导入短信模块
 import {
