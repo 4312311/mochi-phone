@@ -685,8 +685,7 @@ function testParsePhone() {
   console.log('[Test] Current threads:', Object.keys(STATE.threads));
 }
 
-// Export test function for debugging
-export { testParsePhone, autoAddCharContact, cleanInvalidContacts, getAvatar, setAvatar };
+// Export statement moved to end of file
 
 // Escape HTML
 function escHtml(str) {
@@ -1464,5 +1463,10 @@ export {
   refreshBadges,
   syncToCurrentChat,
   parsePhone,
+  testParsePhone,
+  autoAddCharContact,
+  cleanInvalidContacts,
+  getAvatar,
+  setAvatar,
   getSTATE
 };

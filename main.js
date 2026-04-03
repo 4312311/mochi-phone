@@ -547,6 +547,7 @@ function registerAIResponseListeners(eventSource, eventTypes) {
 
         if (phoneMatch) {
           console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
+          console.log('[Raymond Phone] Calling parsePhone...');
           try {
             const parsedCount = parsePhone(phoneMatch[1]);
             console.log('[Raymond Phone] parsePhone returned:', parsedCount, 'items');
