@@ -385,6 +385,7 @@ function setupCharacterSwitchListener() {
 
 // 监听AI回复消息，解析SMS格式
 function setupAIResponseListener() {
+  console.log('[Raymond Phone] ===== setupAIResponseListener CALLED =====');
   console.log('[Raymond Phone] Setting up AI response listener...');
 
   // 检查是否支持 eventSource
@@ -535,10 +536,14 @@ function setupAIResponseListener() {
   // 自动初始化
 $(async function() {
   try {
+    console.log('[Raymond Phone] ===== INITIALIZATION START =====');
     console.log('[Raymond Phone] Starting initialization...');
     await init();
+    console.log('[Raymond Phone] init() completed successfully');
     setupCharacterSwitchListener();
+    console.log('[Raymond Phone] setupCharacterSwitchListener() completed');
     setupAIResponseListener();
+    console.log('[Raymond Phone] setupAIResponseListener() completed');
     console.log('[Raymond Phone] All initializations complete');
   } catch(e) {
     console.error('[Raymond Phone] init failed:', e);
