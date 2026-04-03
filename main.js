@@ -358,8 +358,44 @@ function setupCharacterSwitchListener() {
 
 // 监听AI回复消息，解析SMS格式
 function setupAIResponseListener() {
-  if (window.SillyTavern) {
-    // 监听消息变化
+  if (window.SillyTavern && window.eventSource && window.event_types) {
+    // 使用 SillyTavern 的 eventSource API 监听消息事件
+    const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
+    eventKeys.forEach(key => {
+      const eventType = window.event_types[key];
+      if (eventType) {
+        try {
+          window.eventSource.on(eventType, () => {
+            // 获取最后一条 AI 消息
+            const ctx = getContext();
+            const chat = ctx?.chat;
+            if (!chat?.length) return;
+
+            const lastAI = [...chat].reverse().find(m => !m.is_user);
+            if (!lastAI?.mes) return;
+
+            const raw = lastAI.mes;
+            console.log('[Raymond Phone] New AI message received, checking for PHONE tags...');
+            console.log('[Raymond Phone] Message preview:', raw.substring(0, 200));
+
+            // 检查是否包含 PHONE 标签
+            const phoneMatch = raw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+            if (phoneMatch) {
+              console.log('[Raymond Phone] Found PHONE block in AI response:', phoneMatch[1]);
+              // 解析 PHONE 块
+              parsePhone(phoneMatch[1]);
+            } else {
+              console.log('[Raymond Phone] No PHONE tag found in message');
+            }
+          });
+        } catch(e) {
+          console.warn('[Raymond Phone] Event listener setup failed for:', key, e);
+        }
+      }
+    });
+    console.log('[Raymond Phone] AI response listener setup (using eventSource)');
+  } else {
+    // 兜底方案：使用 MutationObserver 监听 DOM 变化
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
@@ -370,13 +406,19 @@ function setupAIResponseListener() {
               // 找到消息文本元素
               const textEl = node.querySelector('.mes_text');
               if (textEl) {
-                const text = textEl.textContent || textEl.innerText;
+                // 使用 innerHTML 而不是 textContent，以获取 HTML 标签
+                const text = textEl.innerHTML || textEl.textContent || textEl.innerText;
+                console.log('[Raymond Phone] New AI message (DOM), checking for PHONE tags...');
+                console.log('[Raymond Phone] Message preview:', text.substring(0, 200));
+
                 // 检查是否包含PHONE标签
                 const phoneMatch = text.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
                 if (phoneMatch) {
-                  console.log('[Raymond Phone] Found PHONE block in AI response');
+                  console.log('[Raymond Phone] Found PHONE block in AI response:', phoneMatch[1]);
                   // 解析PHONE块
                   parsePhone(phoneMatch[1]);
+                } else {
+                  console.log('[Raymond Phone] No PHONE tag found in message');
                 }
               }
             }
@@ -392,7 +434,7 @@ function setupAIResponseListener() {
         childList: true,
         subtree: true
       });
-      console.log('[Raymond Phone] AI response listener setup');
+      console.log('[Raymond Phone] AI response listener setup (using MutationObserver)');
     }
   }
 }
