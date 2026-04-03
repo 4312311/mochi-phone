@@ -1,0 +1,67 @@
+#rp-wrapper { position:fixed; right:20px; bottom:20px; z-index:9998; }
+
+/* ── FAB ── */
+#rp-fab {
+  position:fixed; right:20px; bottom:20px; z-index:2147483647;
+  width:52px; height:52px; border-radius:50%;
+  background:rgba(255,255,255,.95); backdrop-filter:blur(12px);
+  border:1px solid rgba(0,0,0,.1);
+  display:flex; align-items:center; justify-content:center;
+  padding:6px; overflow:hidden; cursor:grab;
+  box-shadow:0 4px 24px rgba(0,0,0,.18);
+  transition:box-shadow .15s;
+  user-select:none; touch-action:none;
+}
+#rp-fab:hover { transform:scale(1.1); }
+
+/* ── phone container ── */
+#rp-phone {
+  position:fixed; right:84px; bottom:20px; z-index:10000;
+  cursor:default;
+}
+
+
+/* ══════════════════════════════════════
+   📱 MOBILE RESPONSIVE ADAPTATION
+   ══════════════════════════════════════ */
+@media (max-width: 768px) {
+  #rp-fab {
+    width: 32px !important;
+    height: 32px !important;
+    /* font-size removed: using image icon */
+    /* ST 给 html 加 transform 导致 bottom: 失效,必须用 top: calc(100vh) 绕过 */
+    top: calc(100vh - 142px) !important;
+    bottom: auto !important;
+    right: 14px !important;
+    left: auto !important;
+    transform: none !important;
+    background: rgba(255,255,255,.95) !important;
+    border: 1px solid rgba(0,0,0,.1) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,.18) !important;
+    backdrop-filter: blur(12px) !important;
+    z-index: 2147483647 !important;
+  }
+  /* PC mode: phone stays at fixed right:84px - centering via JS class only */
+  #rp-phone.rp-mobile-pos {
+    left: calc(50vw - 150px) !important;
+    top: calc(50vh - 280px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    z-index: 2147483645 !important;
+  }
+  #rp-frame {
+    width: 300px !important;
+    height: 560px !important;
+    border-radius: 38px !important;
+  }
+  #rp-screen {
+    border-radius: min(40px, 6vw) !important;
+  }
+}
+@media (max-width: 360px) {
+  #rp-frame {
+    width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 60px) !important;
+  }
+}

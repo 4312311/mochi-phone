@@ -36,7 +36,12 @@ import {
   findOrCreateThread,
   showBanner,
   refreshBadges,
-  syncToCurrentChat
+  syncToCurrentChat,
+  parsePhone,
+  autoAddCharContact,
+  cleanInvalidContacts,
+  getAvatar,
+  setAvatar
 } from './src/modules/messages.js';
 
 // 4. 导入主题模块
@@ -351,11 +356,53 @@ function setupCharacterSwitchListener() {
   }
 }
 
+// 监听AI回复消息，解析SMS格式
+function setupAIResponseListener() {
+  if (window.SillyTavern) {
+    // 监听消息变化
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          // 检查是否有新的消息元素
+          const newMessages = mutation.addedNodes;
+          newMessages.forEach((node) => {
+            if (node.nodeType === 1 && node.classList.contains('mes') && !node.classList.contains('is_user')) {
+              // 找到消息文本元素
+              const textEl = node.querySelector('.mes_text');
+              if (textEl) {
+                const text = textEl.textContent || textEl.innerText;
+                // 检查是否包含PHONE标签
+                const phoneMatch = text.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+                if (phoneMatch) {
+                  console.log('[Raymond Phone] Found PHONE block in AI response');
+                  // 解析PHONE块
+                  parsePhone(phoneMatch[1]);
+                }
+              }
+            }
+          });
+        }
+      });
+    });
+
+    // 开始观察消息容器
+    const messagesContainer = document.querySelector('.chat-messages');
+    if (messagesContainer) {
+      observer.observe(messagesContainer, {
+        childList: true,
+        subtree: true
+      });
+      console.log('[Raymond Phone] AI response listener setup');
+    }
+  }
+}
+
 // 自动初始化
 $(async function() {
   try {
     await init();
     setupCharacterSwitchListener();
+    setupAIResponseListener();
   } catch(e) {
     console.error('[Raymond Phone] init failed:', e);
   }
