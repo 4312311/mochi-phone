@@ -90,13 +90,34 @@ function injectStyles() {
 }
 
 // ================================================================
-//  获取SillyTavern上下文
+//  获取SillyTavern上下文和全局对象
 // ================================================================
 function getContext() {
   if (window.SillyTavern && window.SillyTavern.getContext) {
     return window.SillyTavern.getContext();
   }
+  if (window.getContext) {
+    return window.getContext();
+  }
   return null;
+}
+
+const _eventSource = window.eventSource || window.SillyTavern?.eventSource;
+const _eventTypes = window.event_types || window.SillyTavern?.eventTypes;
+
+// 标准化 Phone 标记格式（处理 HTML 实体和全角符号）
+function normalizePhoneMarkup(raw) {
+  let s = String(raw || '');
+  // HTML 实体反转义
+  s = s
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&nbsp;/gi, ' ');
+  // 全角尖括号兼容
+  s = s.replace(/</g, '<').replace(/>/g, '>');
+  return s;
 }
 
 // ================================================================
@@ -367,21 +388,30 @@ function setupAIResponseListener() {
   console.log('[Raymond Phone] Setting up AI response listener...');
 
   // 检查是否支持 eventSource
-  if (!window.eventSource || !window.event_types) {
+  if (!_eventSource || !_eventTypes) {
     console.warn('[Raymond Phone] eventSource or event_types not available');
+    console.log('[Raymond Phone] Available globals:', {
+      eventSource: !!_eventSource,
+      eventTypes: !!_eventTypes,
+      windowEventSource: !!window.eventSource,
+      windowEventTypes: !!window.event_types,
+      sillyTavernEventSource: !!(window.SillyTavern?.eventSource),
+      sillyTavernEventTypes: !!(window.SillyTavern?.eventTypes),
+      SillyTavern: !!window.SillyTavern
+    });
     return;
   }
 
-  console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(window.event_types));
+  console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(_eventTypes));
 
   // 监听多个事件类型（兼容不同 ST 版本）
   const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
   eventKeys.forEach(key => {
-    const eventType = window.event_types[key];
+    const eventType = _eventTypes[key];
     if (eventType) {
       console.log(`[Raymond Phone] Setting up listener for ${key} (${eventType})`);
 
-      window.eventSource.on(eventType, () => {
+      _eventSource.on(eventType, () => {
         console.log(`[Raymond Phone] Event triggered: ${key}`);
 
         // 获取上下文
@@ -419,6 +449,12 @@ function setupAIResponseListener() {
 
         const raw = lastAI.mes;
 
+        console.log('[Raymond Phone] Raw message preview:', raw.substring(0, 200));
+
+        // 修复思维链冲突：先剥离 <think> 块
+        const rawStripped = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
+        const normalizedRaw = normalizePhoneMarkup(rawStripped);
+
         // 指纹防重
         const fp = `${ctx.chatId}|${raw.length}|${raw.slice(0, 24)}|${raw.slice(-24)}`;
         if (fp === window._lastAiFingerprint) {
@@ -428,10 +464,10 @@ function setupAIResponseListener() {
         window._lastAiFingerprint = fp;
 
         // 检查是否包含 PHONE 标签
-        const hasPhoneOpen = /<PHONE\b/i.test(raw);
-        const hasPhoneClose = /<\/PHONE>/i.test(raw);
-        const hasSmsOpen = /<SMS\b/i.test(raw);
-        const hasSmsClose = /<\/SMS>/i.test(raw);
+        const hasPhoneOpen = /<PHONE\b/i.test(normalizedRaw);
+        const hasPhoneClose = /<\/PHONE>/i.test(normalizedRaw);
+        const hasSmsOpen = /<SMS\b/i.test(normalizedRaw);
+        const hasSmsClose = /<\/SMS>/i.test(normalizedRaw);
 
         console.log('[Raymond Phone] Message structure check:', {
           hasPhoneOpen,
@@ -451,8 +487,8 @@ function setupAIResponseListener() {
         }
 
         // 匹配 PHONE 块
-        const phoneMatch = raw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
-        const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(raw);
+        const phoneMatch = normalizedRaw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+        const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(normalizedRaw);
 
         console.log('[Raymond Phone] Parsing result:', {
           hasPhoneBlock: !!phoneMatch,
@@ -481,7 +517,7 @@ function setupAIResponseListener() {
         } else if (hasBarePhoneTags) {
           console.log('[Raymond Phone] Found bare phone tags (no PHONE wrapper)');
           try {
-            const parsedCount = parsePhone(raw);
+            const parsedCount = parsePhone(normalizedRaw);
             console.log('[Raymond Phone] parsePhone (bare tags) returned:', parsedCount, 'items');
           } catch(e) {
             console.error('[Raymond Phone] Error in parsePhone (bare):', e);
