@@ -254,7 +254,19 @@ init()
 import { RP_PHONE_CSS } from './src/styles/index.js';
 ```
 
-`src/styles/index.js` 会在运行时自动读取并合并 `modules/` 目录下的所有 CSS 模块。
+### 文件结构
+
+```
+src/styles/
+├── index.js                 # CSS 入口文件
+├── css.js.deprecated        # 原始备份
+└── modules/                # 14 个 JS 模块
+    ├── base.js
+    ├── themes.js
+    └── ... 其他模块
+```
+
+每个模块将 CSS 内容作为字符串常量导出，直接在浏览器中使用，无需构建步骤。
 
 详细文档见 `src/styles/README.md`。
 

@@ -1,4 +1,4 @@
-#rp-view-moments{background:transparent !important;display:flex;flex-direction:column}
+export const css = `#rp-view-moments{background:transparent !important;display:flex;flex-direction:column}
 
 #rp-moments-list{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:8px}
 #rp-moments-list::-webkit-scrollbar{display:none}
@@ -66,3 +66,4 @@
 .rp-set-avatar-preview{width:38px;height:38px;border-radius:19px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
 
 /* ===== DIARY VIEW ===== */
+`;

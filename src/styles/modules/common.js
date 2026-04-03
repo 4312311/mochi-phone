@@ -1,4 +1,4 @@
-#rp-phone.rp-theme-star #rp-view-settings { background: transparent !important; }
+export const css = `#rp-phone.rp-theme-star #rp-view-settings { background: transparent !important; }
 #rp-phone.rp-theme-star #rp-view-api-settings { background: transparent !important; }
 /* Section title labels */
 #rp-phone.rp-theme-star .rp-grp-pick-item{border-bottom-color:rgba(130,90,255,.12)!important}#rp-phone.rp-theme-star .rp-grp-pick-item.selected{background:rgba(130,90,255,.12)!important}#rp-phone.rp-theme-star .rp-grp-pick-name{color:#d4c8ff!important}#rp-phone.rp-theme-star .rp-grp-pick-chk{border-color:rgba(160,120,255,.4)!important}#rp-phone.rp-theme-star .rp-grp-modal{background:rgba(16,8,42,.95)!important;border:1px solid rgba(130,90,255,.2)!important}#rp-phone.rp-theme-star .rp-grp-modal-hd{color:#d4c8ff!important;border-bottom-color:rgba(130,90,255,.15)!important}#rp-phone.rp-theme-star .rp-grp-name-inp{background:rgba(30,16,70,.8)!important;border-color:rgba(130,90,255,.35)!important;color:#d4c8ff!important}#rp-phone.rp-theme-star .rp-grp-name-inp::placeholder{color:rgba(180,165,255,.4)!important}#rp-phone.rp-theme-star .rp-grp-modal-ft{border-top-color:rgba(130,90,255,.15)!important}#rp-phone.rp-theme-star .rp-grp-ft-cancel{color:rgba(180,165,255,.45)!important;border-right-color:rgba(130,90,255,.15)!important}#rp-phone.rp-theme-star .rp-grp-ft-ok{color:#a78bfa!important}
@@ -897,3 +897,4 @@
   background-position: center !important;
 }
 /* ── THEMES VIEW ── */
+`;

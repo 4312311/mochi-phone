@@ -1,4 +1,4 @@
-#rp-view-diary{background:transparent;display:flex;flex-direction:column;overflow:hidden}
+export const css = `#rp-view-diary{background:transparent;display:flex;flex-direction:column;overflow:hidden}
 .rp-diary-gen-btn{background:none;border:none;cursor:pointer;color:var(--rp-nav-btn,#2563eb);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .3s;flex-shrink:0}
 .rp-diary-gen-btn:disabled{opacity:.35;cursor:default}
 .rp-diary-gen-btn.rp-spinning{animation:rpSpin .7s linear infinite}
@@ -58,3 +58,4 @@
 
 /* ══ 2048 GAME ══ */
 #rp-view-g2048{position:relative;background:transparent;display:flex;flex-direction:column;overflow:hidden;height:100%}
+`;

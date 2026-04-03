@@ -1,4 +1,4 @@
-#rp-wrapper { position:fixed; right:20px; bottom:20px; z-index:9998; }
+export const css = `#rp-wrapper { position:fixed; right:20px; bottom:20px; z-index:9998; }
 
 /* ── FAB ── */
 #rp-fab {
@@ -66,3 +66,4 @@
   }
 }
 /* ── CSS THEME TOKENS ── */
+`;

@@ -1,4 +1,4 @@
-/* ── frame (iPhone 15 Pro) ── */
+export const css = `/* ── frame (iPhone 15 Pro) ── */
 #rp-frame {
   position:relative; width:286px; height:580px;
   background:var(--rp-frame-bg);
@@ -39,3 +39,4 @@
   display:flex; align-items:flex-end; justify-content:space-between;
   padding:0 20px 7px; z-index:199; color:var(--rp-sbar-color);
   font-size:12px; font-weight:600; letter-spacing:-.2px;
+`;

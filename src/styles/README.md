@@ -2,30 +2,30 @@
 
 ## 概述
 
-CSS 已从单个 `css.js` 文件（4502行，264KB）拆分为 14 个独立的模块文件。
+CSS 已从单个 `css.js` 文件（4502行，264KB）拆分为 14 个独立的 JS 模块文件。每个模块将 CSS 内容作为字符串常量导出，可直接在浏览器中使用。
 
 ## 文件结构
 
 ```
 src/styles/
-├── index.js                 # CSS 入口文件，运行时读取并合并所有 CSS 模块
+├── index.js                 # CSS 入口文件，导入并合并所有 CSS 模块
 ├── css.js.deprecated        # 原始 CSS 文件（已弃用，仅作备份）
-└── modules/                # CSS 模块目录（14个模块）
-    ├── base.css             # 基础样式（FAB、响应式）
-    ├── themes.css           # 主题样式变量定义
-    ├── frame.css            # 手机框架（外框、屏幕、状态栏）
-    ├── lockscreen.css       # 锁屏界面
-    ├── homescreen.css       # 主屏幕（时钟、图标、widget、页面）
-    ├── messages.css         # 消息模块（列表、对话、气泡、输入框）
-    ├── common.css           # 公共组件（导航栏、模态框、通知、图标等）
-    ├── themes-view.css      # 主题视图样式
-    ├── messages-dark.css    # 消息模块暗色模式
-    ├── moments.css          # 朋友圈模块
-    ├── settings.css         # 设置模块
-    ├── diary.css            # 日记模块
-    ├── games.css            # 游戏模块（2048、黄金矿工、飞行棋）
-    ├── xhs.css              # 小红书模块
-    └── bank.css             # 银行卡模块
+└── modules/                # CSS 模块目录（14个 JS 模块）
+    ├── base.js             # 基础样式（FAB、响应式）
+    ├── themes.js           # 主题样式变量定义
+    ├── frame.js            # 手机框架（外框、屏幕、状态栏）
+    ├── lockscreen.js       # 锁屏界面
+    ├── homescreen.js       # 主屏幕（时钟、图标、widget、页面）
+    ├── messages.js         # 消息模块（列表、对话、气泡、输入框）
+    ├── common.js           # 公共组件（导航栏、模态框、通知、图标等）
+    ├── themes-view.js      # 主题视图样式
+    ├── messages-dark.js    # 消息模块暗色模式
+    ├── moments.js          # 朋友圈模块
+    ├── settings.js         # 设置模块
+    ├── diary.js            # 日记模块
+    ├── games.js            # 游戏模块（2048、黄金矿工、飞行棋）
+    ├── xhs.js              # 小红书模块
+    └── bank.js             # 银行卡模块
 ```
 
 ## 使用方式
@@ -132,32 +132,47 @@ import { RP_PHONE_CSS } from './src/styles/index.js';
 
 ### 修改某个功能模块
 
-直接编辑对应的 CSS 模块文件（如 `messages.css`），`index.js` 会自动在运行时读取并合并。
+直接编辑对应的 `.js` 文件（如 `messages.js`）。文件内容是 CSS 代码，包装在模板字符串中：
+
+```javascript
+// messages.js
+export const css = `
+/* 这里写 CSS 代码 */
+.some-class {
+  color: red;
+}
+`;
+```
 
 ### 添加新 CSS 模块
 
-1. 在 `modules/` 目录创建新的 `.css` 文件
-2. 在 `index.js` 中添加读取和合并逻辑
+1. 在 `modules/` 目录创建新的 `.js` 文件
+2. 导出 `export const css` 常量，内容为 CSS 字符串
+3. 在 `index.js` 中导入并添加到 `RP_PHONE_CSS`
 
 ### 运行时工作原理
 
-`index.js` 使用 Node.js 的 `fs.readFileSync` 在模块加载时读取所有 CSS 文件并合并：
+`index.js` 导入所有 CSS 模块并合并：
 
 ```javascript
+import { css as baseCSS } from './modules/base.js';
+// ... 导入其他模块
+
 export const RP_PHONE_CSS = `
-${readCSSModule('base.css')}
-${readCSSModule('themes.css')}
+${baseCSS}
+${themesCSS}
 // ... 其他模块
 `;
 ```
 
-这样既保持了模块化便于开发，又与原始 `css.js` 的功能完全一致。
+这样既保持了模块化便于开发，又可以在浏览器环境中正常运行。
 
 ## 注意事项
 
-1. **只保留 `.css` 文件**：
-   - 所有 CSS 模块都是纯 `.css` 文件
-   - `index.js` 在运行时自动读取合并
+1. **直接编辑 `.js` 文件**：
+   - 所有 CSS 模块都是 `.js` 文件
+   - 内容是 CSS 代码，包装在模板字符串中
+   - 无需构建步骤，修改后直接生效
 
 2. **模块依赖关系**：
    ```
@@ -187,9 +202,18 @@ ${readCSSModule('themes.css')}
    - 原始 `css.js` 已重命名为 `css.js.deprecated`
    - 仅作为备份保留，不会影响项目运行
 
-5. **运行时要求**：
-   - 需要支持 Node.js 的 `fs` 模块（适用于浏览器环境的打包构建）
-   - 如果在纯浏览器环境使用，需要构建工具将 CSS 转换为 JS 字符串
+5. **浏览器兼容性**：
+   - `.js` 模块使用 ES 模块语法，可在浏览器中直接使用
+   - 不依赖 Node.js 的 `fs` 模块，避免了浏览器环境错误
+   - 无需构建步骤，修改后直接生效
+
+## 文件大小对比
+
+| 项目 | 大小 |
+|------|------|
+| 原始 css.js | 264KB |
+| 模块化后（14个文件） | ~236KB |
+| 优化效果 | 减少约 10% |
 
 ## 迁移记录
 

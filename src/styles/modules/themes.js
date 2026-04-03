@@ -1,4 +1,4 @@
-#rp-phone {
+export const css = `#rp-phone {
   /* Frame */
   --rp-frame-bg:linear-gradient(160deg,#e8e8e8,#d0d0d0);
   --rp-frame-sh:0 0 0 1.5px rgba(0,0,0,.12),0 0 0 1.5px rgba(0,0,0,.08),0 36px 80px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.5);
@@ -177,3 +177,4 @@
   --rp-moment-text:#d5ccff;
   --rp-moment-bd:rgba(140,110,255,.1);
 }
+`;

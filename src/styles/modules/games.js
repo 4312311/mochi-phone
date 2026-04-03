@@ -1,4 +1,4 @@
-#rp-view-g2048{position:relative;background:transparent;display:flex;flex-direction:column;overflow:hidden;height:100%}
+export const css = `#rp-view-g2048{position:relative;background:transparent;display:flex;flex-direction:column;overflow:hidden;height:100%}
 #g2048-header{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;flex-shrink:0}
 #g2048-scores{display:flex;gap:7px}
 .g2048-sbox{background:rgba(255,255,255,.82);border:1px solid rgba(0,0,0,.08);border-radius:7px;padding:3px 10px;text-align:center;min-width:50px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
@@ -1389,3 +1389,4 @@
 .ludo-rolling{animation:rp-dice-roll .4s ease-in-out 3}
 /* ── GAMES FOLDER (iOS style) ── */
 .rp-folder-ico {
+`;

@@ -1,4 +1,4 @@
-position:absolute; inset:0;
+export const css = `position:absolute; inset:0;
   background:transparent;
 }
 .rp-home-body { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:54px; }
@@ -142,3 +142,4 @@ position:absolute; inset:0;
 }
 
 /* ── MESSAGES VIEW ── */
+`;

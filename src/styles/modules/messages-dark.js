@@ -1,4 +1,4 @@
-.rp-dark .rp-thread{border-bottom-color:rgba(255,255,255,.05)}
+export const css = `.rp-dark .rp-thread{border-bottom-color:rgba(255,255,255,.05)}
 .rp-dark .rp-thread:hover{background:rgba(255,255,255,.03)}
 .rp-dark .rp-tn{color:#dde0f2}
 .rp-dark .rp-tp{color:rgba(160,175,255,.46)}
@@ -29,3 +29,4 @@
 .rp-dark .rp-nb-time{color:rgba(160,175,255,.36)}
 .rp-dark #rp-home-ind{background:rgba(255,255,255,.22)}
 /* ── MOMENTS VIEW ── */
+`;

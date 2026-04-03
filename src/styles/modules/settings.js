@@ -1,4 +1,4 @@
-#rp-view-settings{background:transparent;display:flex;flex-direction:column;overflow-y:auto}
+export const css = `#rp-view-settings{background:transparent;display:flex;flex-direction:column;overflow-y:auto}
 #rp-view-api-settings{background:transparent;display:flex;flex-direction:column}
 .rp-dark #rp-view-settings{background:transparent}
 .rp-set-section{background:#fff;border-radius:12px;margin:10px 12px 0;padding:0 14px;overflow:hidden}
@@ -23,3 +23,4 @@
 .rp-set-avatar-preview{width:38px;height:38px;border-radius:19px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
 
 /* ===== DIARY VIEW ===== */
+`;

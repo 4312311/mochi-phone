@@ -1,4 +1,4 @@
-#rp-view-messages { background:transparent !important; display:flex; flex-direction:column; }
+export const css = `#rp-view-messages { background:transparent !important; display:flex; flex-direction:column; }
 #rp-thread-list { flex:1; overflow-y:auto; scrollbar-width:none; }
 #rp-thread-list::-webkit-scrollbar { display:none; }
 
@@ -504,3 +504,4 @@
 }
 
 /* ══ STAR THEME: Settings & API dark styling ══ */
+`;

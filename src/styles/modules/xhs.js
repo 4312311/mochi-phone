@@ -1,4 +1,4 @@
-#rp-phone{
+export const css = `#rp-phone{
   --rp-xhs-bg:#fff6f8;
   --rp-xhs-panel:rgba(255,255,255,.82);
   --rp-xhs-card:#ffffff;
@@ -233,3 +233,4 @@
 #rp-phone.rp-theme-misty .rp-ts-welcome {
   background: rgba(225,242,255,.72) !important;
   border-color: rgba(100,170,220,.3) !important;
+`;

@@ -1,4 +1,4 @@
-/* ── Misty Blue Hydrangea Theme ── */
+export const css = `/* ── Misty Blue Hydrangea Theme ── */
 #rp-phone.rp-theme-misty {
   --rp-frame-bg:linear-gradient(160deg,#f0f4f8,#dce6ef,#e8eff5);
   --rp-frame-sh:0 0 0 1.5px rgba(140,170,200,.3),0 0 0 1.5px rgba(140,170,200,.15),0 36px 80px rgba(80,110,140,.25),inset 0 1px 0 rgba(255,255,255,.9);
@@ -107,3 +107,4 @@
 .rp-dark .rp-wd-status{color:rgba(160,175,255,.52)}
 .rp-dark .rp-home-indicator{background:rgba(255,255,255,.22)}
 /* ── DARK MESSAGES ── */
+`;
