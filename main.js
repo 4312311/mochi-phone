@@ -388,31 +388,58 @@ function setupAIResponseListener() {
   console.log('[Raymond Phone] ===== setupAIResponseListener CALLED =====');
   console.log('[Raymond Phone] Setting up AI response listener...');
 
-  // 检查是否支持 eventSource
-  if (!_eventSource || !_eventTypes) {
-    console.warn('[Raymond Phone] eventSource or event_types not available');
-    console.log('[Raymond Phone] Available globals:', {
-      eventSource: !!_eventSource,
-      eventTypes: !!_eventTypes,
-      windowEventSource: !!window.eventSource,
-      windowEventTypes: !!window.event_types,
-      sillyTavernEventSource: !!(window.SillyTavern?.eventSource),
-      sillyTavernEventTypes: !!(window.SillyTavern?.eventTypes),
-      SillyTavern: !!window.SillyTavern
-    });
-    return;
-  }
+  // 使用延迟注册，确保 SillyTavern 对象已加载
+  setTimeout(() => {
+    // 重新获取 eventSource 和 eventTypes（可能已被初始化）
+    const delayedEventSource = window.eventSource || window.SillyTavern?.eventSource;
+    const delayedEventTypes = window.event_types || window.SillyTavern?.eventTypes;
 
-  console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(_eventTypes));
+    if (!delayedEventSource || !delayedEventTypes) {
+      console.warn('[Raymond Phone] eventSource or event_types still not available after delay');
+      console.log('[Raymond Phone] Available globals:', {
+        eventSource: !!delayedEventSource,
+        eventTypes: !!delayedEventTypes,
+        windowEventSource: !!window.eventSource,
+        windowEventTypes: !!window.event_types,
+        sillyTavernEventSource: !!(window.SillyTavern?.eventSource),
+        sillyTavernEventTypes: !!(window.SillyTavern?.eventTypes),
+        SillyTavern: !!window.SillyTavern
+      });
+      // 尝试轮询等待
+      let pollCount = 0;
+      const pollInterval = setInterval(() => {
+        pollCount++;
+        const pollEventSource = window.eventSource || window.SillyTavern?.eventSource;
+        const pollEventTypes = window.event_types || window.SillyTavern?.eventTypes;
+        if (pollEventSource && pollEventTypes) {
+          clearInterval(pollInterval);
+          console.log('[Raymond Phone] eventSource available after polling!');
+          registerAIResponseListeners(pollEventSource, pollEventTypes);
+        } else if (pollCount >= 20) {
+          clearInterval(pollInterval);
+          console.error('[Raymond Phone] Failed to find eventSource after 20 polling attempts');
+        }
+      }, 500);
+      return;
+    }
+
+    console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(delayedEventTypes));
+    registerAIResponseListeners(delayedEventSource, delayedEventTypes);
+  }, 100);
+}
+
+// 实际注册事件监听器的函数
+function registerAIResponseListeners(eventSource, eventTypes) {
+  console.log('[Raymond Phone] Registering event listeners...');
 
   // 监听多个事件类型（兼容不同 ST 版本）
   const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
   eventKeys.forEach(key => {
-    const eventType = _eventTypes[key];
+    const eventType = eventTypes[key];
     if (eventType) {
       console.log(`[Raymond Phone] Setting up listener for ${key} (${eventType})`);
 
-      _eventSource.on(eventType, () => {
+      eventSource.on(eventType, () => {
         console.log(`[Raymond Phone] Event triggered: ${key}`);
 
         // 获取上下文
