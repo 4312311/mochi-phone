@@ -316,7 +316,10 @@ function parsePhone(block) {
     // 1) 标准 <img src="..."> —— 生图插件替换后的最终形态
     const imgRe = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*\/?>/gi;
     let im;
-    while ((im = imgRe.exec(raw)) !== null) imgs.push(im[1]);
+    while ((im = imgRe.exec(raw)) !== null) {
+      imgs.push(im[1]);
+      console.log('[extractImgsFromText] Found img:', im[1]);
+    }
 
     // 2) 智绘姬格式 image###prompt### —— 提取 prompt，存为 pending_image 占位
     const chatu8Re = /image###([\s\S]*?)###/gi;
@@ -383,6 +386,7 @@ function parsePhone(block) {
 
     // 先从 SMS 内容里提取图片（生图插件替换后的 <img src>）和智绘姬 pending prompts
     const { imgs: smsImgs, cleanText: smsCleanText, pendingPrompts: smsPendingPrompts } = extractImgsFromText(rawContent);
+    console.log('[parsePhone] Extracted from SMS:', { imgsCount: smsImgs.length, imgs: smsImgs, textLength: smsCleanText.length });
     const text = sanitizeSmsText(smsCleanText);
 
     // 线程路由策略:
@@ -426,7 +430,11 @@ function parsePhone(block) {
     console.log('[Phone:diag] incomingMsg called', { threadId, text: text.slice(0,40), time: msgTime });
 
     // 先发已有图片（生图插件已替换完的 <img src>）
-    smsImgs.forEach(src => routeImgToThread(threadId, src, msgTime));
+    console.log('[parsePhone] Routing images to thread:', { threadId, imgCount: smsImgs.length, msgTime });
+    smsImgs.forEach((src, idx) => {
+      console.log(`[parsePhone] Routing image ${idx + 1}/${smsImgs.length}:`, src);
+      routeImgToThread(threadId, src, msgTime);
+    });
 
     // 发送文本消息
     if (text) {
