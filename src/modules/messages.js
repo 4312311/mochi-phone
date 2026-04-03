@@ -313,8 +313,11 @@ function parsePhone(block) {
     const imgs = [];
     const pendingPrompts = [];
 
+    console.log('[extractImgsFromText] Input raw:', raw.substring(0, 200));
+
     // 1) 标准 <img src="..."> —— 生图插件替换后的最终形态
-    const imgRe = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*\/?>/gi;
+    // 匹配 <img ... src="..." ... />，确保src是独立的属性名
+    const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
     let im;
     while ((im = imgRe.exec(raw)) !== null) {
       imgs.push(im[1]);
