@@ -23,7 +23,7 @@ Mochi Phone (Ray Mobile Shell) 是一个为 SillyTavern 设计的交互式手机
 
 ### 核心原则
 - **模块化优先**: 每个功能模块独立维护，职责清晰
-- **CSS模块化**: 所有CSS已拆分为79个独立文件，便于按需加载和维护
+- **CSS模块化**: 所有CSS已拆分为12个逻辑模块，便于按需加载和维护
 - **事件驱动**: 通过路由系统和事件监听实现页面切换和交互
 - **状态共享**: 全局状态 `STATE` 在模块间共享，通过 `CHAT_STORE` 实现多对话隔离
 
@@ -37,11 +37,23 @@ mochi-phone/
 ├── src/
 │   ├── html.js           # HTML模板
 │   ├── styles/
-│   │   ├── index.js      # CSS主入口（整合79个CSS模块）
-│   │   ├── css.js        # 原始CSS（已拆分，保留备份）
-│   │   ├── README.md     # CSS拆分文档
-│   │   ├── base.css      # 基础样式
-│   │   └── modules/      # 79个CSS模块文件
+│   │   ├── index.js      # CSS主入口（导出 css.js 内容）
+│   │   ├── css.js        # 原始CSS（4502行，264KB，已弃用）
+│   │   ├── README.md     # CSS模块化文档
+│   │   └── modules/      # 12个CSS模块文件（开发维护参考）
+│   │       ├── base.css      # 基础样式 (2.2KB)
+│   │       ├── common.css    # 公共组件 (56.7KB)
+│   │       ├── frame.css     # 手机框架 (2.2KB)
+│   │       ├── homescreen.css # 主屏幕 (5.4KB)
+│   │       ├── lockscreen.css # 锁屏界面 (5.4KB)
+│   │       ├── messages.css   # 消息模块 (8.4KB)
+│   │       ├── moments.css   # 朋友圈模块 (22.8KB)
+│   │       ├── themes.css    # 主题样式 (46.7KB)
+│   │       ├── settings.css  # 设置模块 (14.5KB)
+│   │       ├── games.css     # 游戏模块 (18.9KB)
+│   │       ├── diary.css     # 日记模块 (14.7KB)
+│   │       ├── xhs.css       # 小红书模块 (17.5KB)
+│   │       └── bank.css      # 银行卡模块 (9.3KB)
 │   └── modules/
 │       ├── messages.js   # 消息模块（1463行）
 │       ├── themes.js     # 主题模块（427行）
@@ -277,9 +289,9 @@ function getContext() {
 
 **状态**: 已弃用，仅作备份
 
-**原因**: 
+**原因**:
 - 原index.js包含所有CSS内联代码（15586行），导致文件过大（696KB）
-- CSS已迁移至 `src/styles/index.js`，通过79个模块化管理
+- CSS已迁移至 `src/styles/css.js`（4502行，264KB），并通过12个模块化文件维护
 - 所有功能已迁移至 `src/modules/` 各模块
 
 **当前入口**: `main.js`
@@ -299,7 +311,7 @@ function getContext() {
 ### 添加新主题
 
 1. 在 `themes.js` 的 `THEMES` 对象中添加主题定义
-2. 在 `src/styles/modules/` 添加主题CSS（如 `themes-mine.js`）
+2. 在 `src/styles/modules/themes.css` 中添加主题相关样式
 3. 更新主题选择器渲染逻辑
 
 ### CSS模块维护
@@ -339,7 +351,7 @@ function getContext() {
 - ✅ 主题模块
 - ✅ 设置模块
 - ✅ 朋友圈模块
-- ✅ CSS模块化拆分（79个模块）
+- ✅ CSS模块化拆分（12个逻辑模块）
 
 **待迁移**:
 - ⏳ 日记模块
