@@ -102,31 +102,40 @@ function getContext() {
   return null;
 }
 
-// 尝试多种方式获取 eventSource 和 eventTypes
-let _eventSource = window.eventSource || window.SillyTavern?.eventSource;
-let _eventTypes = window.event_types || window.SillyTavern?.eventTypes;
+// 尝试多种方式获取 eventSource 和 eventTypes（通过 Promise 包装）
+const getEventSource = async () => {
+  let eventSource = window.eventSource || window.SillyTavern?.eventSource;
+  let eventTypes = window.event_types || window.SillyTavern?.eventTypes;
 
-// 如果没有，尝试通过动态导入获取
-if (!_eventSource || !_eventTypes) {
-  console.log('[Raymond Phone] eventSource/eventTypes not found, trying dynamic import...');
-  // 尝试通过 import 访问
-  try {
-    import('../../../../script.js').then(mod => {
-      if (mod.eventSource) {
-        console.log('[Raymond Phone] Found eventSource via dynamic import');
-        _eventSource = mod.eventSource;
-      }
-      if (mod.event_types) {
-        console.log('[Raymond Phone] Found event_types via dynamic import');
-        _eventTypes = mod.event_types;
-      }
-    }).catch(e => {
-      console.log('[Raymond Phone] Dynamic import failed:', e);
-    });
-  } catch(e) {
-    console.log('[Raymond Phone] Dynamic import not supported:', e);
+  if (eventSource && eventTypes) {
+    return { eventSource, eventTypes };
   }
-}
+
+  console.log('[Raymond Phone] eventSource/eventTypes not found, trying dynamic import...');
+
+  try {
+    const mod = await import('../../../../script.js');
+    if (mod.eventSource) {
+      console.log('[Raymond Phone] Found eventSource via dynamic import');
+      eventSource = mod.eventSource;
+    }
+    if (mod.event_types) {
+      console.log('[Raymond Phone] Found event_types via dynamic import');
+      eventTypes = mod.event_types;
+    }
+
+    if (eventSource && eventTypes) {
+      return { eventSource, eventTypes };
+    }
+  } catch(e) {
+    console.log('[Raymond Phone] Dynamic import failed:', e);
+  }
+
+  return null;
+};
+
+let _eventSource = null;
+let _eventTypes = null;
 
 // 标准化 Phone 标记格式（处理 HTML 实体和全角符号）
 function normalizePhoneMarkup(raw) {
@@ -407,21 +416,18 @@ function setupCharacterSwitchListener() {
 }
 
 // 监听AI回复消息，解析SMS格式
-function setupAIResponseListener() {
+async function setupAIResponseListener() {
   console.log('[Raymond Phone] ===== setupAIResponseListener CALLED =====');
   console.log('[Raymond Phone] Setting up AI response listener...');
 
-  // 使用延迟注册，确保 SillyTavern 对象已加载
-  setTimeout(() => {
-    // 重新获取 eventSource 和 eventTypes（可能已被初始化）
-    const delayedEventSource = window.eventSource || window.SillyTavern?.eventSource;
-    const delayedEventTypes = window.event_types || window.SillyTavern?.eventTypes;
+  // 等待获取 eventSource
+  const eventObj = await getEventSource();
 
-    if (!delayedEventSource || !delayedEventTypes) {
-      console.warn('[Raymond Phone] eventSource or event_types still not available after delay');
+  if (!eventObj || !eventObj.eventSource || !eventObj.eventTypes) {
+    console.warn('[Raymond Phone] eventSource or event_types not available');
     console.log('[Raymond Phone] Available globals:', {
-      eventSource: !!delayedEventSource,
-      eventTypes: !!delayedEventTypes,
+      eventSource: !!eventObj?.eventSource,
+      eventTypes: !!eventObj?.eventTypes,
       windowEventSource: !!window.eventSource,
       windowEventTypes: !!window.event_types,
       sillyTavernEventSource: !!(window.SillyTavern?.eventSource),
@@ -435,33 +441,12 @@ function setupAIResponseListener() {
       console.log('[Raymond Phone] SillyTavern object:', window.SillyTavern);
     }
 
-    // 打印 window 上所有可能相关的属性
-    console.log('[Raymond Phone] Checking window properties:');
-    console.log('  - eventSource:', typeof window.eventSource);
-    console.log('  - event_types:', typeof window.event_types);
-    console.log('  - eventSource.on:', typeof window.eventSource?.on);
-    console.log('  - eventSource.event_types:', typeof window.eventSource?.event_types);
-      // 尝试轮询等待
-      let pollCount = 0;
-      const pollInterval = setInterval(() => {
-        pollCount++;
-        const pollEventSource = window.eventSource || window.SillyTavern?.eventSource;
-        const pollEventTypes = window.event_types || window.SillyTavern?.eventTypes;
-        if (pollEventSource && pollEventTypes) {
-          clearInterval(pollInterval);
-          console.log('[Raymond Phone] eventSource available after polling!');
-          registerAIResponseListeners(pollEventSource, pollEventTypes);
-        } else if (pollCount >= 20) {
-          clearInterval(pollInterval);
-          console.error('[Raymond Phone] Failed to find eventSource after 20 polling attempts');
-        }
-      }, 500);
-      return;
-    }
+    return;
+  }
 
-    console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(delayedEventTypes));
-    registerAIResponseListeners(delayedEventSource, delayedEventTypes);
-  }, 100);
+  const { eventSource, eventTypes } = eventObj;
+  console.log('[Raymond Phone] eventSource available, event_types:', Object.keys(eventTypes));
+  registerAIResponseListeners(eventSource, eventTypes);
 }
 
 // 实际注册事件监听器的函数
@@ -605,7 +590,7 @@ $(async function() {
     console.log('[Raymond Phone] init() completed successfully');
     setupCharacterSwitchListener();
     console.log('[Raymond Phone] setupCharacterSwitchListener() completed');
-    setupAIResponseListener();
+    await setupAIResponseListener();
     console.log('[Raymond Phone] setupAIResponseListener() completed');
   console.log('[Raymond Phone] All initializations complete');
 
