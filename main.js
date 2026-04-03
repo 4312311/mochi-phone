@@ -454,8 +454,9 @@ async function setupAIResponseListener() {
 function registerAIResponseListeners(eventSource, eventTypes) {
   console.log('[Raymond Phone] Registering event listeners...');
 
-  // 监听多个事件类型（兼容不同 ST 版本）
-  const eventKeys = ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'MESSAGE_SWIPED'];
+  // 只监听 GENERATION_ENDED 事件（避免重复处理）
+  // MESSAGE_RECEIVED 会在 GENERATION_ENDED 后触发，导致重复
+  const eventKeys = ['GENERATION_ENDED', 'MESSAGE_SWIPED'];
   eventKeys.forEach(key => {
     const eventType = eventTypes[key];
     if (eventType) {
@@ -504,6 +505,7 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         // 修复思维链冲突：先剥离 <think> 块
         const rawStripped = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
         const normalizedRaw = normalizePhoneMarkup(rawStripped);
+
 
         // 指纹防重
         const fp = `${ctx.chatId}|${raw.length}|${raw.slice(0, 24)}|${raw.slice(-24)}`;
