@@ -223,36 +223,38 @@ init()
 ## 🎨 CSS模块化
 
 ### 拆分统计
-- **原始文件**: `css.js` (4502行, 264KB)
-- **拆分模块**: 12个
+- **原始文件**: `css.js` (4502行, 264KB) → `css.js.deprecated` (已弃用)
+- **拆分模块**: 14个
 - **模块总大小**: 236KB
 
 ### 模块列表
 
 | 文件 | 大小 | 描述 |
 |------|------|------|
-| `base.css` | ~2KB | 基础样式（FAB、响应式） |
-| `common.css` | 57KB | 公共组件（导航栏、模态框、通知、图标等） |
-| `frame.css` | 2.2KB | 手机框架（外框、屏幕、状态栏） |
-| `homescreen.css` | 5.4KB | 主屏幕（时钟、图标、widget、页面） |
-| `lockscreen.css` | 5.4KB | 锁屏界面 |
-| `messages.css` | 8.4KB | 消息模块（列表、对话、气泡、输入框） |
-| `moments.css` | 23KB | 朋友圈模块 |
-| `themes.css` | 47KB | 主题样式（主题变量、主题视图、主题选择） |
-| `settings.css` | 15KB | 设置模块 |
-| `games.css` | 19KB | 游戏模块（2048、黄金矿工、飞行棋） |
-| `diary.css` | 15KB | 日记模块 |
-| `xhs.css` | 17KB | 小红书模块 |
-| `bank.css` | 9.3KB | 银行卡模块 |
+| `base.css` | 2.2KB | 基础样式（FAB、响应式） |
+| `themes.css` | 6.8KB | 主题变量定义 |
+| `frame.css` | 1.4KB | 手机框架（外框、屏幕、状态栏） |
+| `lockscreen.css` | 3.0KB | 锁屏界面 |
+| `homescreen.css` | 5.0KB | 主屏幕（时钟、图标、widget、页面） |
+| `messages.css` | 21KB | 消息模块（列表、对话、气泡、输入框） |
+| `common.css` | 41KB | 公共组件（导航栏、模态框、通知、图标等） |
+| `themes-view.css` | 6.7KB | 主题视图 |
+| `messages-dark.css` | 1.7KB | 消息暗色模式 |
+| `moments.css` | 5.6KB | 朋友圈模块 |
+| `settings.css` | 2.3KB | 设置模块 |
+| `diary.css` | 5.3KB | 日记模块 |
+| `games.css` | 89KB | 游戏模块（2048、黄金矿工、飞行棋） |
+| `xhs.css` | 21KB | 小红书模块 |
+| `bank.css` | 15KB | 银行卡模块 |
 
 ### 使用方式
 
-**当前运行方式**（无构建工具）:
+**当前运行方式**（模块化）:
 ```javascript
-import { RP_PHONE_CSS } from './src/styles/css.js';
+import { RP_PHONE_CSS } from './src/styles/index.js';
 ```
 
-**模块化CSS文件** (`src/styles/modules/*.css`) 用于开发和维护参考。
+`src/styles/index.js` 会在运行时自动读取并合并 `modules/` 目录下的所有 CSS 模块。
 
 详细文档见 `src/styles/README.md`。
 
