@@ -841,11 +841,12 @@ function sanitizeSmsText(text) {
 function findOrCreateThread(contactId, contactName, initials) {
   let thread = STATE.threads[contactId];
   if (!thread) {
+    const name = contactName || contactId || '';
     const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
     thread = {
       id: contactId,
-      name: contactName,
-      initials: initials || contactName.slice(0, 2).toUpperCase(),
+      name: name,
+      initials: initials || (name ? name.slice(0, 2).toUpperCase() : '??'),
       avatarBg: `linear-gradient(145deg,${GROUP_COLORS[colorIdx]},${GROUP_COLORS[(colorIdx+1)%GROUP_COLORS.length]})`,
       messages: [],
       unread: 0
