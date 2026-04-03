@@ -388,6 +388,7 @@ async function init() {
 
 // 导出navigateTo供其他模块使用
 window.navigateTo = navigateTo;
+window.renderMoments = renderMoments;
 
 // 监听角色切换事件
 function setupCharacterSwitchListener() {
@@ -512,11 +513,28 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         }
         window._lastAiFingerprint = fp;
 
-        // 检查是否包含 PHONE 标签
+        // 详细调试：记录完整的原始消息（前500字符）
+        console.log('[Raymond Phone] Full raw message (first 500 chars):', raw.substring(0, 500));
+        console.log('[Raymond Phone] Full raw message (last 500 chars):', raw.substring(Math.max(0, raw.length - 500)));
+
+        // 检查是否包含各种手机相关标签
         const hasPhoneOpen = /<PHONE\b/i.test(normalizedRaw);
         const hasPhoneClose = /<\/PHONE>/i.test(normalizedRaw);
         const hasSmsOpen = /<SMS\b/i.test(normalizedRaw);
         const hasSmsClose = /<\/SMS>/i.test(normalizedRaw);
+
+        // 检查是否有其他常见标签
+        const hasSignalTag = /<Signal>/i.test(normalizedRaw);
+        const hasInnerFlowTag = /<inner_flow>/i.test(normalizedRaw);
+
+        console.log('[Raymond Phone] Tag detection:', {
+          hasPhoneOpen,
+          hasPhoneClose,
+          hasSmsOpen,
+          hasSmsClose,
+          hasSignalTag,
+          hasInnerFlowTag
+        });
 
         console.log('[Raymond Phone] Message structure check:', {
           hasPhoneOpen,
@@ -535,8 +553,23 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           return;
         }
 
-        // 匹配 PHONE 块
-        const phoneMatch = normalizedRaw.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+        // 匹配 PHONE 块 - 匹配最后一个完整的 PHONE 块（避免匹配思维链中的示例）
+        let phoneMatch = null;
+        const allPhoneMatches = [...normalizedRaw.matchAll(/<PHONE>([\s\S]*?)<\/PHONE>/gi)];
+        if (allPhoneMatches.length > 0) {
+          // 取最后一个匹配（真正的 PHONE 块，不是思维链中的示例）
+          phoneMatch = allPhoneMatches[allPhoneMatches.length - 1];
+          console.log('[Raymond Phone] Found', allPhoneMatches.length, 'PHONE blocks, using the last one');
+          // 验证提取的块是否包含实际的标签内容
+          const phoneContent = phoneMatch[1] || '';
+          const hasRealTags = /<(SMS|GMSG|GVOICE|GHONGBAO|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(phoneContent);
+          console.log('[Raymond Phone] Last PHONE block has real tags:', hasRealTags);
+          if (!hasRealTags && allPhoneMatches.length > 1) {
+            // 如果最后一个块没有实际标签，尝试前一个
+            console.log('[Raymond Phone] Last PHONE block has no real tags, trying previous one');
+            phoneMatch = allPhoneMatches[allPhoneMatches.length - 2];
+          }
+        }
         const hasBarePhoneTags = /<(SMS|GMSG|GVOICE|GHONGBAO|SIMG|NOTIFY|MOMENTS|COMMENT|SYNC|CALL|VOICE|HONGBAO)\b/i.test(normalizedRaw);
 
         console.log('[Raymond Phone] Parsing result:', {

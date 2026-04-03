@@ -292,11 +292,17 @@ function getContext() {
 
 // Parse phone block from AI response
 function parsePhone(block) {
+  console.log('[parsePhone] ========== START PARSING ==========');
+  console.log('[parsePhone] Input block type:', typeof block);
+  console.log('[parsePhone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
+  console.log('[parsePhone] Full block content:', typeof block === 'string' ? block : block);
+
   let parsedCount = 0;
   let m;
 
   // ── 严禁 AI 替 user 发言：获取 user 名字，所有 FROM 解析处都会跳过 user 名 ──
   const _parseUserName = (typeof getContext === 'function' ? getContext()?.name1 : null) || '';
+  console.log('[parsePhone] User name for filtering:', _parseUserName);
   function _isUserFrom(fromStr) {
     if (!_parseUserName || !fromStr) return false;
     return fromStr.trim().toLowerCase() === _parseUserName.toLowerCase();
@@ -361,9 +367,15 @@ function parsePhone(block) {
 
   // 更鲁棒:支持属性顺序变化、单引号/双引号
   const smsTagRe = /<SMS\b([^>]*)>([\s\S]*?)<\/SMS>/gi;
+  console.log('[parsePhone] Checking for SMS tags...');
+  const smsMatches = block.match(smsTagRe);
+  console.log('[parsePhone] SMS matches found:', smsMatches ? smsMatches.length : 0);
+
   while ((m = smsTagRe.exec(block)) !== null) {
     const attrs    = getTagAttrs(m[1]);
     const fromRaw0 = (attrs.FROM || '').trim();
+    console.log('[parsePhone] Found SMS tag:', { from: fromRaw0, attrs, contentPreview: m[2].substring(0, 50) });
+
     // 严禁 AI 替 user 发言：FROM 是 user 名字时直接跳过
     if (_isUserFrom(fromRaw0)) { console.log('[Phone:guard] SMS FROM=user blocked:', fromRaw0); continue; }
     const time     = (attrs.TIME || '').trim();
@@ -390,8 +402,9 @@ function parsePhone(block) {
       // 优先 pending:用户刚通过手机发了短信,回复一定属于这个线程
       threadId = pendingThreadId;
       if (!fromRaw) fromRaw = STATE.threads[threadId]?.name || '';
-    } else if (fromRaw) {
+    } else     if (fromRaw) {
       threadId = matchThread(fromRaw);
+      console.log('[parsePhone] Matched thread for "' + fromRaw + '":', threadId);
       if (!threadId) {
         // FROM 名字匹配失败 → 自动新建该 NPC 的线程，不要把消息误投到当前打开的线程
         const newTh = findOrCreateThread(fromRaw);
@@ -401,10 +414,11 @@ function parsePhone(block) {
     } else if (STATE.currentThread && STATE.threads?.[STATE.currentThread]) {
       threadId = STATE.currentThread;
       fromRaw = STATE.threads[threadId]?.name || '';
+      console.log('[parsePhone] Using current thread:', threadId, fromRaw);
     }
 
     if (!threadId) {
-      console.log('[Phone:diag] parsePhone: no threadId found for FROM=' + fromRaw0);
+      console.log('[Phone:diag] parsePhone: no threadId found for FROM=' + fromRaw0, 'Available threads:', Object.keys(STATE.threads));
       continue;
     }
     const fallbackTime = `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`;
@@ -457,6 +471,7 @@ function parsePhone(block) {
 
   // ── CALL ──
   const callRe = /<CALL\s+FROM="([^"]+)"\s+TIME="([^"]+)"\s*\/?>/gi;
+  console.log('[parsePhone] Checking for CALL tags...');
   while ((m = callRe.exec(block)) !== null) {
     const callFrom = m[1].trim();
     if (_isUserFrom(callFrom)) { console.log('[Phone:guard] CALL FROM=user blocked:', callFrom); continue; }
@@ -567,6 +582,125 @@ function parsePhone(block) {
     parsedCount++;
   }
 
+  // ── MOMENTS (朋友圈) ──
+  // 格式: <MOMENTS FROM="角色名" TIME="23:23">内容</MOMENTS>
+  const momentsRe = /<MOMENTS\b([^>]*)>([\s\S]*?)<\/MOMENTS>/gi;
+  console.log('[parsePhone] Checking for MOMENTS tags...');
+  while ((m = momentsRe.exec(block)) !== null) {
+    const attrs = getTagAttrs(m[1]);
+    const fromName = (attrs.FROM || '').trim();
+    const time = (attrs.TIME || '').trim();
+    const rawContent = m[2] || '';
+
+    // 提取图片（生图插件替换后的 <img src>）和智绘姬 pending prompts
+    const { imgs: momentImgs, cleanText: momentCleanText, pendingPrompts: momentPendingPrompts } = extractImgsFromText(rawContent);
+    const text = sanitizeSmsText(momentCleanText);
+
+    if (fromName) {
+      const th = findOrCreateThread(fromName);
+      const momentId = `moment_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const moment = {
+        id: momentId,
+        from: 'npc',
+        name: fromName,
+        text: text,
+        time: time || (() => {
+          const now = new Date();
+          return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        })(),
+        img: momentImgs[0] || null,
+        pendingImg: null,
+        initials: th.initials,
+        avatarBg: th.avatarBg,
+        likes: [],
+        comments: []
+      };
+
+      // 处理 pending_image 占位（智绘姬模式）
+      if (momentPendingPrompts.length > 0) {
+        moment.pendingImg = momentPendingPrompts[0];
+        moment.pendingImgType = 'chatu8';
+      }
+
+      STATE.moments.push(moment);
+      saveState();
+      parsedCount++;
+
+      // 如果当前在朋友圈视图，重新渲染
+      if (STATE.currentView === 'moments' && window.renderMoments) {
+        window.renderMoments();
+      }
+
+      console.log('[parsePhone] Added moment:', { fromName, text: text.slice(0, 30), time, img: !!moment.img });
+    }
+  }
+
+  // ── COMMENT (朋友圈评论) ──
+  // 格式: <COMMENT MOMENT_ID="feiyinglin_2323" FROM="白鸟绫乃" TIME="23:26">评论内容</COMMENT>
+  const commentRe = /<COMMENT\b([^>]*)>([\s\S]*?)<\/COMMENT>/gi;
+  console.log('[parsePhone] Checking for COMMENT tags...');
+  while ((m = commentRe.exec(block)) !== null) {
+    const attrs = getTagAttrs(m[1]);
+    const momentId = (attrs.MOMENT_ID || '').trim();
+    const fromName = (attrs.FROM || '').trim();
+    const time = (attrs.TIME || '').trim();
+    const text = (m[2] || '').trim();
+
+    if (momentId && fromName && text) {
+      const moment = STATE.moments.find(m => m.id === momentId);
+      if (moment) {
+        const comment = {
+          id: Date.now(),
+          name: fromName,
+          text: text,
+          time: time || (() => {
+            const now = new Date();
+            return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+          })(),
+          replyTo: null
+        };
+
+        if (!moment.comments) moment.comments = [];
+        moment.comments.push(comment);
+        saveState();
+        parsedCount++;
+
+        // 如果当前在朋友圈视图，重新渲染
+        if (STATE.currentView === 'moments' && window.renderMoments) {
+          window.renderMoments();
+        }
+
+        console.log('[parsePhone] Added comment:', { momentId, fromName, text: text.slice(0, 30) });
+      } else {
+        console.warn('[parsePhone] Moment not found for comment:', momentId);
+      }
+    }
+  }
+
+  // ── SYNC (同步状态) ──
+  // 格式: <SYNC STAGE="1" PROGRESS="5" STATUS="隐秘的悸动"/>
+  const syncRe = /<SYNC\b([^>]*)\s*\/?>/gi;
+  console.log('[parsePhone] Checking for SYNC tags...');
+  while ((m = syncRe.exec(block)) !== null) {
+    const attrs = getTagAttrs(m[1]);
+    const stage = parseInt(attrs.STAGE || '1', 10);
+    const progress = parseInt(attrs.PROGRESS || '0', 10);
+    const status = (attrs.STATUS || '').trim();
+
+    if (!isNaN(stage) && !isNaN(progress)) {
+      STATE.sync = {
+        stage: stage,
+        progress: progress,
+        status: status || '乖巧'
+      };
+      saveState();
+      parsedCount++;
+      console.log('[parsePhone] Updated sync state:', STATE.sync);
+    }
+  }
+
+  console.log('[parsePhone] Finished parsing. Total items:', parsedCount);
+  console.log('[parsePhone] Current threads:', Object.keys(STATE.threads));
   return parsedCount;
 }
 
