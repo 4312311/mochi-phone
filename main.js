@@ -660,7 +660,7 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
   // 如果已经存在该 chatId 的监控，先清除旧的
   if (window._messageMonitors && window._messageMonitors[chatId]) {
     console.log('[Raymond Phone] Clearing existing monitor for chat:', chatId);
-    clearInterval(window._messageMonitors[chatId]);
+    clearInterval(window._messageMonitors[chatId].timer);
   }
 
   if (!window._messageMonitors) {
@@ -679,7 +679,7 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
     if (ctx.chatId !== chatId) {
       console.log('[Raymond Phone] Chat ID changed, stopping monitor for:', chatId);
       clearInterval(pollTimer);
-      if (window._messageMonitors[chatId] === pollTimer) {
+      if (window._messageMonitors[chatId]) {
         delete window._messageMonitors[chatId];
       }
       return;
@@ -698,23 +698,39 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
     }
 
     const currentMessage = lastAI.mes;
+    const monitor = window._messageMonitors[chatId];
+
+    // 获取上次检查时的消息内容
+    const lastCheckedMessage = monitor?.lastCheckedMessage || originalMessage;
 
     // 检查消息内容是否发生变化
-    // 1. 消息指纹（长度 + 前后片段）
     const currentFingerprint = `${currentMessage.length}|${currentMessage.slice(0, 50)}|${currentMessage.slice(-50)}`;
-    const originalFingerprint = `${originalMessage.length}|${originalMessage.slice(0, 50)}|${originalMessage.slice(-50)}`;
+    const lastCheckedFingerprint = `${lastCheckedMessage.length}|${lastCheckedMessage.slice(0, 50)}|${lastCheckedMessage.slice(-50)}`;
 
-    if (currentFingerprint !== originalFingerprint) {
+    if (currentFingerprint !== lastCheckedFingerprint) {
       console.log('[Raymond Phone] Message content changed, re-parsing PHONE block');
-      console.log('[Raymond Phone] Original fingerprint:', originalFingerprint.substring(0, 100));
-      console.log('[Raymond Phone] Current fingerprint:', currentFingerprint.substring(0, 100));
 
-      // 清理旧消息
-      cleanupOldMessages();
-
-      // 重新解析 PHONE 块
+      // 检查是否是"完全重新生成"还是"内容更新"
+      // 如果消息长度变化超过 50%，或者是原先没有 PHONE 块现在有了，可能是重新生成
       const rawStripped = currentMessage.replace(/<think[\s\S]*?<\/think>/gi, '');
       const normalizedRaw = normalizePhoneMarkup(rawStripped);
+      const lastRawStripped = lastCheckedMessage.replace(/<think[\s\S]*?<\/think>/gi, '');
+      const lastNormalizedRaw = normalizePhoneMarkup(lastRawStripped);
+
+      const currentHasPhone = /<PHONE>[\s\S]*?<\/PHONE>/i.test(normalizedRaw);
+      const lastHasPhone = /<PHONE>[\s\S]*?<\/PHONE>/i.test(lastNormalizedRaw);
+      const lengthRatio = currentMessage.length / Math.max(lastCheckedMessage.length, 1);
+
+      // 判断是否需要清空消息：原先没有 PHONE 块，现在有了，或者长度变化超过 50%
+      const shouldCleanup = (!lastHasPhone && currentHasPhone) || (lengthRatio < 0.5 || lengthRatio > 2);
+
+      if (shouldCleanup) {
+        console.log('[Raymond Phone] Message appears to be regenerated, cleaning up old messages');
+        cleanupOldMessages();
+      } else {
+        console.log('[Raymond Phone] Message appears to be updated (e.g., image replaced), keeping old messages');
+      }
+
       const allPhoneMatches = [...normalizedRaw.matchAll(/<PHONE>([\s\S]*?)<\/PHONE>/gi)];
 
       if (allPhoneMatches.length > 0) {
@@ -737,21 +753,24 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
         console.log('[Raymond Phone] No PHONE block found after content change');
       }
 
-      // 更新原始消息记录
-      window._messageMonitors[chatId] = { timer: pollTimer, lastMessage: currentMessage };
+      // 更新监控状态
+      window._messageMonitors[chatId] = {
+        timer: pollTimer,
+        lastMessage: originalMessage,
+        lastCheckedMessage: currentMessage
+      };
 
-      // 注意：不要停止轮询，继续监听后续变化
       return;
     }
 
     // 持续轮询，不设置超时
-    // console.log('[Raymond Phone] Message content unchanged, continuing to monitor...');
   }, interval);
 
   // 保存定时器引用
   window._messageMonitors[chatId] = {
     timer: pollTimer,
-    lastMessage: originalMessage
+    lastMessage: originalMessage,
+    lastCheckedMessage: originalMessage
   };
 
   console.log('[Raymond Phone] Message monitor started for chat:', chatId);
