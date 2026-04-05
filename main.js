@@ -234,6 +234,7 @@ async function init() {
 
   // 清空指纹，防止热重载后第一条消息被跳过
   window._lastAiFingerprint = null;
+  window._lastProcessedMessageId = null;
   window._pendingPhoneReply = null;
 
   console.log('[Raymond Phone] Fingerprint reset for hot-reload');
@@ -516,13 +517,19 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           return;
         }
 
-        // 检查是否是同一个 chatId 的新消息（说明 AI 消息被重新生成了）
+        // 检查是否是同一个 chatId 的新消息（说明 AI 消息被重新生成）
+        // 需要获取旧的 messageId 来清理对应的手机消息
         if (window._lastAiFingerprint && window._lastAiFingerprint.startsWith(ctx.chatId + '|')) {
-          console.log('[Raymond Phone] AI message regenerated, clearing old phone messages');
-          cleanupOldMessages();
+          const oldMessageId = window._lastProcessedMessageId;
+          console.log('[Raymond Phone] AI message regenerated, clearing old phone messages for messageId:', oldMessageId);
+          cleanupOldMessages(oldMessageId);
         }
 
         window._lastAiFingerprint = fp;
+
+        // 保存当前的 messageId，供下次重新生成时使用
+        const currentMessageId = lastAI.message_id || lastAI.id;
+        window._lastProcessedMessageId = currentMessageId;
 
         // 详细调试：记录完整的原始消息（前500字符）
         console.log('[Raymond Phone] Full raw message (first 500 chars):', raw.substring(0, 500));

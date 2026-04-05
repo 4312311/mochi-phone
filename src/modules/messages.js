@@ -296,7 +296,7 @@ function parsePhone(block, messageId) {
   console.log('[parsePhone] Input block type:', typeof block);
   console.log('[parsePhone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
   console.log('[parsePhone] Full block content:', typeof block === 'string' ? block : block);
-  console.log('[parsePhone] messageId:', messageId);
+  console.log('[Raymond Phone] parsePhone messageId:', messageId);
 
   let parsedCount = 0;
   let m;
@@ -480,15 +480,21 @@ function parsePhone(block, messageId) {
     if (text) {
       const th = STATE.threads[threadId];
       if (th) {
-        const msgObj = { from: threadId, text, time: msgTime };
-        if (messageId) msgObj.messageId = messageId;
-        th.messages.push(msgObj);
-        if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
-        refreshBadges(); updatePreviews();
-        if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
-        showBanner(th.name, text, msgTime);
-        saveState();
-        parsedCount++;
+        // 去重：检查相同 messageId、相同内容的消息是否已存在
+        const isDup = messageId && th.messages.some(msg => msg.messageId === messageId && msg.text === text);
+        if (isDup) {
+          console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20) });
+        } else {
+          const msgObj = { from: threadId, text, time: msgTime };
+          if (messageId) msgObj.messageId = messageId;
+          th.messages.push(msgObj);
+          if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
+          refreshBadges(); updatePreviews();
+          if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
+          showBanner(th.name, text, msgTime);
+          saveState();
+          parsedCount++;
+        }
       }
     }
 
@@ -637,7 +643,7 @@ function parsePhone(block, messageId) {
   // ── MOMENTS (朋友圈) ──
   // 格式: <MOMENTS FROM="角色名" TIME="23:23">内容</MOMENTS>
   const momentsRe = /<MOMENTS\b([^>]*)>([\s\S]*?)<\/MOMENTS>/gi;
-  console.log('[parsePhone] Checking for MOMENTS tags...');
+  console.log('[Raymond Phone] Checking for MOMENTS tags...');
   while ((m = momentsRe.exec(block)) !== null) {
     const attrs = getTagAttrs(m[1]);
     const fromName = (attrs.FROM || '').trim();
@@ -683,7 +689,7 @@ function parsePhone(block, messageId) {
         window.renderMoments();
       }
 
-      console.log('[parsePhone] Added moment:', { fromName, text: text.slice(0, 30), time, img: !!moment.img });
+      console.log('[Raymond Phone] Added moment:', { fromName, text: text.slice(0, 30), time, img: !!moment.img, pendingImg: moment.pendingImg });
     }
   }
 
@@ -1332,9 +1338,26 @@ function showHongbaoSheet(hongbaoData) {
   console.log('[Messages] Show hongbao sheet:', hongbaoData);
 }
 
-// Incoming voice (placeholder)
-function incomingVoice(threadId, senderName, duration) {
-  console.log('[Messages] Incoming voice:', duration);
+// Incoming voice
+function incomingVoice(fromRaw, time, duration, text) {
+  const thread = findOrCreateThread(fromRaw);
+  // 去重:同 from+duration+text 已存在则跳过
+  const isDup = thread.messages.some(m => m.type === 'voice' && m.name === fromRaw && m.duration === duration && m.text === text);
+  if (isDup) {
+    console.log('[Raymond Phone] Skip duplicate voice:', fromRaw, duration);
+    return;
+  }
+  thread.messages.push({
+    id: `vc_${Date.now()}`, from: 'incoming',
+    type: 'voice', name: fromRaw, time,
+    duration, text, played: false
+  });
+  thread.unread = (thread.unread || 0) + 1;
+  refreshBadges(); renderThreadList();
+  if (STATE.currentThread === thread.id) renderBubbles(thread.id);
+  showBanner(thread.name, `🎤 语音消息 ${duration}`);
+  saveState();
+  console.log('[Raymond Phone] Added voice message:', { fromRaw, duration, text: text?.slice(0, 20) });
 }
 
 // Play voice (placeholder)
@@ -1342,9 +1365,39 @@ function playVoice(voiceId) {
   console.log('[Messages] Play voice:', voiceId);
 }
 
-// Incoming group message (placeholder)
-function incomingGroupMsg(groupId, groupName, senderName, text) {
-  console.log('[Messages] Incoming group message:', text);
+// Incoming group message
+const GROUP_COLORS = ['#7c3aed','#0891b2','#0d9488','#b45309','#be185d','#1d4ed8'];
+
+function incomingGroupMsg(fromRaw, groupName, time, text) {
+  const groupId = `grp_${groupName}`;
+  if (!STATE.threads[groupId]) {
+    const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
+    STATE.threads[groupId] = {
+      id: groupId, name: groupName,
+      initials: groupName.slice(0, 2),
+      avatarBg: `linear-gradient(145deg,${GROUP_COLORS[colorIdx]},${GROUP_COLORS[(colorIdx+1)%GROUP_COLORS.length]})`,
+      type: 'group', messages: [], unread: 0
+    };
+  }
+  const thread = STATE.threads[groupId];
+  const senderTh = findOrCreateThread(fromRaw);
+  // 去重:同 from+time+text 已存在则跳过
+  const isDup = thread.messages.some(m => m.type === 'group_msg' && m.name === fromRaw && m.text === text);
+  if (isDup) {
+    console.log('[Raymond Phone] Skip duplicate GMSG:', fromRaw, text?.slice(0, 20));
+    return;
+  }
+  thread.messages.push({
+    id: `gm_${Date.now()}`, from: 'incoming',
+    type: 'group_msg', name: fromRaw, time, text,
+    initials: senderTh.initials, avatarBg: senderTh.avatarBg
+  });
+  thread.unread = (thread.unread || 0) + 1;
+  refreshBadges(); renderThreadList();
+  if (STATE.currentThread === groupId) renderBubbles(groupId);
+  showBanner(groupName, `${fromRaw}:${text.slice(0,22)}${text.length>22?'...':''}`);
+  saveState();
+  console.log('[Raymond Phone] Added group message:', { groupName, fromRaw, text: text?.slice(0, 20) });
 }
 
 // Incoming group voice (placeholder)
