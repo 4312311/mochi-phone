@@ -847,14 +847,24 @@ function cleanupOldMessages(messageId) {
 }
 
 // 监听消息删除/聊天切换事件
-function setupMessageDeleteListeners() {
-  const eventSource = window.eventSource || window.SillyTavern?.eventSource;
-  const eventTypes = window.event_types || window.SillyTavern?.eventTypes;
+async function setupMessageDeleteListeners() {
+  // 使用统一的 getEventSource 函数获取（支持动态导入）
+  const eventObj = await getEventSource();
 
-  if (!eventSource || !eventTypes) {
+  if (!eventObj || !eventObj.eventSource || !eventObj.eventTypes) {
     console.warn('[Raymond Phone] Cannot setup delete listeners: eventSource not available');
+    console.log('[Raymond Phone] Available globals:', {
+      eventSource: !!eventObj?.eventSource,
+      eventTypes: !!eventObj?.eventTypes,
+      windowEventSource: !!window.eventSource,
+      windowEventTypes: !!window.event_types,
+      sillyTavernEventSource: !!(window.SillyTavern?.eventSource),
+      sillyTavernEventTypes: !!(window.SillyTavern?.eventTypes)
+    });
     return;
   }
+
+  const { eventSource, eventTypes } = eventObj;
 
   // 删除单条消息
   if (eventTypes.MESSAGE_DELETED) {
@@ -927,7 +937,7 @@ $(async function() {
     console.log('[Raymond Phone] setupCharacterSwitchListener() completed');
     await setupAIResponseListener();
     console.log('[Raymond Phone] setupAIResponseListener() completed');
-    setupMessageDeleteListeners();
+    await setupMessageDeleteListeners();
     console.log('[Raymond Phone] setupMessageDeleteListeners() completed');
     console.log('[Raymond Phone] All initializations complete');
 
