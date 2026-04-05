@@ -1366,8 +1366,6 @@ function playVoice(voiceId) {
 }
 
 // Incoming group message
-const GROUP_COLORS = ['#7c3aed','#0891b2','#0d9488','#b45309','#be185d','#1d4ed8'];
-
 function incomingGroupMsg(fromRaw, groupName, time, text) {
   const groupId = `grp_${groupName}`;
   if (!STATE.threads[groupId]) {
