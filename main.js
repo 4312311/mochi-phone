@@ -490,7 +490,9 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         console.log('[Raymond Phone] Last AI message:', {
           is_user: lastAI.is_user,
           mesLength: lastAI.mes?.length,
-          mesPreview: lastAI.mes?.substring(0, 150)
+          mesPreview: lastAI.mes?.substring(0, 150),
+          message_id: lastAI.message_id,
+          id: lastAI.id
         });
 
         if (!lastAI.mes) {
@@ -609,8 +611,10 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         if (phoneMatch) {
           console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
           console.log('[Raymond Phone] Calling parsePhone...');
+          const messageId = lastAI.message_id || lastAI.id;
+          console.log('[Raymond Phone] Using message_id:', messageId);
           try {
-            const parsedCount = parsePhone(phoneMatch[1]);
+            const parsedCount = parsePhone(phoneMatch[1], messageId);
             console.log('[Raymond Phone] parsePhone returned:', parsedCount, 'items');
 
             if (parsedCount > 0) {
@@ -625,20 +629,21 @@ function registerAIResponseListeners(eventSource, eventTypes) {
 
             // 启动监听，等待消息内容的任何变化（包括图片替换、文字修改等）
             console.log('[Raymond Phone] Starting message change monitoring for chat:', ctx.chatId);
-            startMessageChangeMonitor(ctx.chatId, phoneMatch[1], lastAI.mes);
+            startMessageChangeMonitor(ctx.chatId, phoneMatch[1], lastAI.mes, messageId);
 
           } catch(e) {
             console.error('[Raymond Phone] Error in parsePhone:', e);
           }
         } else if (hasBarePhoneTags) {
           console.log('[Raymond Phone] Found bare phone tags (no PHONE wrapper)');
+          const messageId = lastAI.message_id || lastAI.id;
           try {
-            const parsedCount = parsePhone(normalizedRaw);
+            const parsedCount = parsePhone(normalizedRaw, messageId);
             console.log('[Raymond Phone] parsePhone (bare tags) returned:', parsedCount, 'items');
 
             // 同样启动监听
             console.log('[Raymond Phone] Starting message change monitoring for chat:', ctx.chatId);
-            startMessageChangeMonitor(ctx.chatId, null, lastAI.mes);
+            startMessageChangeMonitor(ctx.chatId, null, lastAI.mes, messageId);
 
           } catch(e) {
             console.error('[Raymond Phone] Error in parsePhone (bare):', e);
@@ -652,10 +657,10 @@ function registerAIResponseListeners(eventSource, eventTypes) {
 }
 
 // 监听 AI 消息内容变化（包括图片替换、文字修改等）
-function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage) {
+function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage, messageId) {
   const interval = 2000; // 每 2 秒检查一次，减少性能开销
 
-  console.log('[Raymond Phone] Starting message change monitoring for chat:', chatId);
+  console.log('[Raymond Phone] Starting message change monitoring for chat:', chatId, 'messageId:', messageId);
 
   // 如果已经存在该 chatId 的监控，先清除旧的
   if (window._messageMonitors && window._messageMonitors[chatId]) {
@@ -710,23 +715,64 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
     if (currentFingerprint !== lastCheckedFingerprint) {
       console.log('[Raymond Phone] Message content changed, re-parsing PHONE block');
 
-      // 检查是否是"完全重新生成"还是"内容更新"
-      // 如果消息长度变化超过 50%，或者是原先没有 PHONE 块现在有了，可能是重新生成
+      // 提取 PHONE 块内容进行对比
       const rawStripped = currentMessage.replace(/<think[\s\S]*?<\/think>/gi, '');
       const normalizedRaw = normalizePhoneMarkup(rawStripped);
       const lastRawStripped = lastCheckedMessage.replace(/<think[\s\S]*?<\/think>/gi, '');
       const lastNormalizedRaw = normalizePhoneMarkup(lastRawStripped);
 
-      const currentHasPhone = /<PHONE>[\s\S]*?<\/PHONE>/i.test(normalizedRaw);
-      const lastHasPhone = /<PHONE>[\s\S]*?<\/PHONE>/i.test(lastNormalizedRaw);
-      const lengthRatio = currentMessage.length / Math.max(lastCheckedMessage.length, 1);
+      // 提取 PHONE 块内容
+      const getPhoneContent = (text) => {
+        const matches = text.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+        return matches ? matches[1] : '';
+      };
 
-      // 判断是否需要清空消息：原先没有 PHONE 块，现在有了，或者长度变化超过 50%
-      const shouldCleanup = (!lastHasPhone && currentHasPhone) || (lengthRatio < 0.5 || lengthRatio > 2);
+      const currentPhoneContent = getPhoneContent(normalizedRaw);
+      const lastPhoneContent = getPhoneContent(lastNormalizedRaw);
+
+      const currentHasPhone = currentPhoneContent.length > 0;
+      const lastHasPhone = lastPhoneContent.length > 0;
+
+      // 判断是否需要清空消息
+      // 1. 原先没有 PHONE 块，现在有了 → 清理
+      // 2. PHONE 块内容完全不同（通过相似度判断）→ 清理
+      // 3. 长度变化超过 50% → 清理
+
+      let shouldCleanup = false;
+
+      if (!lastHasPhone && currentHasPhone) {
+        // 情况1：原先没有手机消息，现在有了
+        console.log('[Raymond Phone] Cleanup reason: previously no PHONE, now has PHONE');
+        shouldCleanup = true;
+      } else if (currentHasPhone && lastHasPhone) {
+        // 情况2：比较 PHONE 块内容是否发生根本变化
+        // 使用更严格的相似度检测
+        const currentPhoneHash = currentPhoneContent.length + '|' + currentPhoneContent.slice(0, 50) + '|' + currentPhoneContent.slice(-50);
+        const lastPhoneHash = lastPhoneContent.length + '|' + lastPhoneContent.slice(0, 50) + '|' + lastPhoneContent.slice(-50);
+
+        if (currentPhoneHash !== lastPhoneHash) {
+          const contentLengthRatio = currentPhoneContent.length / Math.max(lastPhoneContent.length, 1);
+          // 如果内容长度变化超过 30%，认为是完全重新生成
+          if (contentLengthRatio < 0.7 || contentLengthRatio > 1.4) {
+            console.log('[Raymond Phone] Cleanup reason: PHONE content changed significantly (ratio:', contentLengthRatio + ')');
+            shouldCleanup = true;
+          } else {
+            console.log('[Raymond Phone] PHONE content similar, no cleanup needed');
+          }
+        } else {
+          console.log('[Raymond Phone] PHONE content identical, no cleanup needed');
+        }
+      } else if (!currentHasPhone && lastHasPhone) {
+        // 情况3：现在没有手机消息了（可能被删除了）
+        console.log('[Raymond Phone] Cleanup reason: PHONE block removed');
+        shouldCleanup = true;
+      }
 
       if (shouldCleanup) {
-        console.log('[Raymond Phone] Message appears to be regenerated, cleaning up old messages');
-        cleanupOldMessages();
+        console.log('[Raymond Phone] Message appears to be regenerated, cleaning up old messages for messageId:', messageId);
+        cleanupOldMessages(messageId);
+        // 重置解析哈希，让新消息能被解析
+        window._lastPhoneBlockHash = null;
       } else {
         console.log('[Raymond Phone] Message appears to be updated (e.g., image replaced), keeping old messages');
       }
@@ -744,7 +790,7 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
 
         console.log('[Raymond Phone] Re-parsing PHONE block after content change');
         try {
-          const parsedCount = parsePhone(phoneMatch[1]);
+          const parsedCount = parsePhone(phoneMatch[1], messageId);
           console.log('[Raymond Phone] Re-parsing completed, parsed', parsedCount, 'items');
         } catch(e) {
           console.error('[Raymond Phone] Error in re-parsing:', e);
@@ -777,10 +823,10 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
 }
 
 // 清理旧消息（当 AI 消息被重新生成时）
-function cleanupOldMessages() {
-  console.log('[Raymond Phone] Calling cleanupOldPhoneMessages from messages module');
+function cleanupOldMessages(messageId) {
+  console.log('[Raymond Phone] Calling cleanupOldPhoneMessages from messages module, messageId:', messageId);
   if (window.RaymondPhone && typeof window.RaymondPhone.cleanupOldMessages === 'function') {
-    window.RaymondPhone.cleanupOldMessages();
+    window.RaymondPhone.cleanupOldMessages(messageId);
   } else {
     console.warn('[Raymond Phone] cleanupOldMessages function not available');
   }

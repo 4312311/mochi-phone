@@ -291,14 +291,25 @@ function getContext() {
 }
 
 // Parse phone block from AI response
-function parsePhone(block) {
+function parsePhone(block, messageId) {
   console.log('[parsePhone] ========== START PARSING ==========');
   console.log('[parsePhone] Input block type:', typeof block);
   console.log('[parsePhone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
   console.log('[parsePhone] Full block content:', typeof block === 'string' ? block : block);
+  console.log('[parsePhone] messageId:', messageId);
 
   let parsedCount = 0;
   let m;
+
+  // 去重：检查这条消息是否已经处理过（通过消息指纹）
+  // 指纹 = PHONE块内容的MD5或简化哈希
+  const blockHash = (messageId || 'noId') + '|' + block.length + '|' + (block.slice(0, 100) + block.slice(-100));
+  if (window._lastPhoneBlockHash === blockHash) {
+    console.log('[parsePhone] SKIP: Same PHONE block already processed (hash match)');
+    return 0;
+  }
+  window._lastPhoneBlockHash = blockHash;
+  console.log('[parsePhone] New PHONE block, will parse (hash:', blockHash, ')');
 
   // ── 严禁 AI 替 user 发言：获取 user 名字，所有 FROM 解析处都会跳过 user 名 ──
   const _parseUserName = (typeof getContext === 'function' ? getContext()?.name1 : null) || '';
@@ -381,13 +392,15 @@ function parsePhone(block) {
   }
 
   // ── 辅助：把图片 src 路由到指定线程
-  function routeImgToThread(threadId, src, time) {
+  function routeImgToThread(threadId, src, time, msgId) {
     const th = STATE.threads[threadId];
     if (!th) return;
     const fallbackTime = time || `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`;
     const isDup = th.messages.some(msg => msg.type === 'image' && msg.src === src);
     if (isDup) return;
-    th.messages.push({ id: `aimg_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, from: threadId, type: 'image', time: fallbackTime, src });
+    const msgObj = { id: `aimg_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, from: threadId, type: 'image', time: fallbackTime, src };
+    if (msgId) msgObj.messageId = msgId;
+    th.messages.push(msgObj);
     if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
     refreshBadges(); updatePreviews();
     if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
@@ -460,14 +473,16 @@ function parsePhone(block) {
     console.log('[parsePhone] Routing images to thread:', { threadId, imgCount: smsImgs.length, msgTime });
     smsImgs.forEach((src, idx) => {
       console.log(`[parsePhone] Routing image ${idx + 1}/${smsImgs.length}:`, src);
-      routeImgToThread(threadId, src, msgTime);
+      routeImgToThread(threadId, src, msgTime, messageId);
     });
 
     // 发送文本消息
     if (text) {
       const th = STATE.threads[threadId];
       if (th) {
-        th.messages.push({ from: threadId, text, time: msgTime });
+        const msgObj = { from: threadId, text, time: msgTime };
+        if (messageId) msgObj.messageId = messageId;
+        th.messages.push(msgObj);
         if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
         refreshBadges(); updatePreviews();
         if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
@@ -496,7 +511,9 @@ function parsePhone(block) {
       const th = STATE.threads[threadId];
       if (th) {
         const pendingId = `pending_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-        th.messages.push({ id: pendingId, from: threadId, type: 'pending_image', time: msgTime, prompt });
+        const msgObj = { id: pendingId, from: threadId, type: 'pending_image', time: msgTime, prompt };
+        if (messageId) msgObj.messageId = messageId;
+        th.messages.push(msgObj);
         if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
         saveState();
         parsedCount++;
@@ -740,20 +757,31 @@ function parsePhone(block) {
 }
 
 // 清理旧消息（当 AI 消息被重新生成时）
-function cleanupOldPhoneMessages() {
-  console.log('[Raymond Phone] Cleaning up old phone messages (AI regenerated)');
+// messageId: 可选，要删除的消息所属的 AI 楼层 ID，如果不传则删除所有消息
+function cleanupOldPhoneMessages(messageId) {
+  console.log('[Raymond Phone] Cleaning up old phone messages, messageId:', messageId);
 
   let cleanedCount = 0;
 
-  // 清空所有线程的消息
+  // 如果提供了 messageId，只删除该楼层对应的消息
+  // 否则删除所有消息
   Object.keys(STATE.threads).forEach(threadId => {
     const thread = STATE.threads[threadId];
     if (thread && thread.messages) {
       const oldLength = thread.messages.length;
-      thread.messages = [];
-      thread.unread = 0;
-      cleanedCount += oldLength;
-      console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength, 'messages');
+
+      if (messageId) {
+        // 只删除带有指定 messageId 的消息
+        thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
+      } else {
+        // 删除所有消息
+        thread.messages = [];
+        thread.unread = 0;
+      }
+
+      const newLength = thread.messages.length;
+      cleanedCount += (oldLength - newLength);
+      console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength - newLength, 'messages');
     }
   });
 
