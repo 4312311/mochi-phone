@@ -767,8 +767,6 @@ function cleanupOldMessages() {
   }
 }
 
-  console.log('[Raymond Phone] AI response listener setup complete');
-}
 
 // 自动初始化
 $(async function() {
