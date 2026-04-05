@@ -105,6 +105,125 @@ init()
 
 ---
 
+## 🔑 核心逻辑说明
+
+### 1. 消息去重机制
+
+短信去重采用双重策略：
+
+```javascript
+// 有 messageId 时，使用 messageId + text 组合去重
+let isDup = false;
+if (messageId) {
+  isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text);
+} else {
+  // 无 messageId 时，使用 text + time 去重
+  isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
+}
+```
+
+### 2. 批量消息添加（保持顺序）
+
+图片消息和文本消息需要批量添加，确保显示顺序正确：
+
+```javascript
+const msgItems = [];
+// 图片消息先添加
+smsImgs.forEach((src, idx) => {
+  const isDup = th.messages.some(msg => msg.type === 'image' && msg.src === src);
+  if (!isDup) {
+    const msgObj = { id: `aimg_${Date.now()}_${idx}`, from: threadId, type: 'image', time: msgTime, src };
+    if (messageId) msgObj.messageId = messageId;
+    msgItems.push(msgObj);
+  }
+});
+// 文本消息后添加
+if (text) { msgItems.push(msgObj); }
+// 批量添加
+if (msgItems.length > 0) {
+  msgItems.forEach(msgObj => th.messages.push(msgObj));
+}
+```
+
+### 3. 图片提取函数
+
+从 AI 响应中提取图片，支持多种格式：
+
+```javascript
+function extractImgsFromText(raw) {
+  const imgs = [], pendingPrompts = [];
+  const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
+  // 支持 <pic>标签、<img src>、待解析的prompt 等
+  return { imgs, cleanText, pendingPrompts };
+}
+```
+
+### 4. 语音消息处理
+
+- 语音消息存储在 `text` 字段（而非 `voiceText`）
+- 语音默认标记为 `played = true`，确保文本立即显示
+- 通过 `window.playVoice` 全局函数播放
+
+```javascript
+function playVoice(threadId, voiceId) {
+  const th = STATE.threads[threadId];
+  const msg = th.messages.find(m => m.id === voiceId);
+  if (msg) {
+    msg.played = true;
+    saveState();
+    renderBubbles(threadId);
+  }
+}
+window.playVoice = playVoice;
+```
+
+### 5. 消息清理安全机制
+
+**关键**: 防止 `messageId` 无效时误删所有消息！采用双重防护：
+
+**调用处检查（main.js）**:
+```javascript
+const oldMessageId = window._lastProcessedMessageId;
+const hasValidMessageId = oldMessageId !== undefined && oldMessageId !== null && oldMessageId !== '';
+if (hasValidMessageId) {
+  cleanupOldMessages(oldMessageId);
+}
+```
+
+**函数内部检查（messages.js）**:
+```javascript
+function cleanupOldPhoneMessages(messageId) {
+  const hasValidMessageId = messageId !== undefined && messageId !== null && messageId !== '';
+  if (!hasValidMessageId) {
+    console.log('[Raymond Phone] No valid messageId, skipping cleanup');
+    return;
+  }
+  // 只有带有效 messageId 的消息才会被删除
+}
+```
+
+**messageId 来源**:
+```javascript
+// 直接取最后一条消息的索引作为唯一标识（参考 media-auto-generation 插件）
+const messageIdx = chat.length - 1;
+const lastAI = chat[messageIdx];
+const messageId = String(messageIdx);
+```
+
+注意：`lastAI.message_id` 和 `lastAI.id` 在新版 SillyTavern 中都是 `undefined`，因此使用消息数组索引作为唯一标识。
+
+### 6. AI 响应解析格式
+
+监听 `<PHONE>` 标签，支持以下指令:
+- `[SMS:内容]` - 发送短信
+- `[SMS:联系人:内容]` - 向指定联系人发送短信
+- `[GROUP:群名:成员1,成员2]` - 创建群聊
+- `[CALL:动作]` - 电话相关
+- `[HONGBAO:金额]` - 红包
+- `[VOICE:时长]` - 语音消息
+
+---
+
 ## 📦 模块详解
 
 ### 1. 消息模块 (`src/modules/messages.js`)
@@ -375,5 +494,5 @@ function getContext() {
 
 ---
 
-*项目宪法版本: 1.0.0*  
-*最后更新: 2026-04-03*
+*项目宪法版本: 1.1.0*  
+*最后更新: 2026-04-05*

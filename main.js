@@ -481,19 +481,22 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           return;
         }
 
-        // 获取最后一条 AI 消息
-        const lastAI = [...chat].reverse().find(m => !m.is_user);
-        if (!lastAI) {
-          console.warn('[Raymond Phone] No AI message found');
+        // 获取最后一条 AI 消息（直接取最后一条，因为 GENERATION_ENDED 触发时最后一条就是 AI 的）
+        const messageIdx = chat.length - 1;
+        const lastAI = chat[messageIdx];
+        if (!lastAI || lastAI.is_user) {
+          console.warn('[Raymond Phone] Last message is not AI or does not exist');
           return;
         }
 
+        // 使用消息索引作为唯一标识
+        const messageId = String(messageIdx);
         console.log('[Raymond Phone] Last AI message:', {
           is_user: lastAI.is_user,
           mesLength: lastAI.mes?.length,
           mesPreview: lastAI.mes?.substring(0, 150),
-          message_id: lastAI.message_id,
-          id: lastAI.id
+          messageIdx,
+          messageId
         });
 
         if (!lastAI.mes) {
@@ -521,14 +524,20 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         // 需要获取旧的 messageId 来清理对应的手机消息
         if (window._lastAiFingerprint && window._lastAiFingerprint.startsWith(ctx.chatId + '|')) {
           const oldMessageId = window._lastProcessedMessageId;
-          console.log('[Raymond Phone] AI message regenerated, clearing old phone messages for messageId:', oldMessageId);
-          cleanupOldMessages(oldMessageId);
+          // 只有有效的 messageId 才执行清理，防止误删
+          const hasValidMessageId = oldMessageId !== undefined && oldMessageId !== null && oldMessageId !== '';
+          if (hasValidMessageId) {
+            console.log('[Raymond Phone] AI message regenerated, clearing old phone messages for messageId:', oldMessageId);
+            cleanupOldMessages(oldMessageId);
+          } else {
+            console.log('[Raymond Phone] AI message regenerated but no valid oldMessageId, skipping cleanup');
+          }
         }
 
         window._lastAiFingerprint = fp;
 
-        // 保存当前的 messageId，供下次重新生成时使用
-        const currentMessageId = lastAI.message_id || lastAI.id;
+        // 使用消息索引作为唯一标识
+        const currentMessageId = String(messageIdx);
         window._lastProcessedMessageId = currentMessageId;
 
         // 详细调试：记录完整的原始消息（前500字符）
@@ -618,8 +627,7 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         if (phoneMatch) {
           console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
           console.log('[Raymond Phone] Calling parsePhone...');
-          const messageId = lastAI.message_id || lastAI.id;
-          console.log('[Raymond Phone] Using message_id:', messageId);
+          console.log('[Raymond Phone] Using messageId:', messageId);
           try {
             const parsedCount = parsePhone(phoneMatch[1], messageId);
             console.log('[Raymond Phone] parsePhone returned:', parsedCount, 'items');
@@ -643,7 +651,6 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           }
         } else if (hasBarePhoneTags) {
           console.log('[Raymond Phone] Found bare phone tags (no PHONE wrapper)');
-          const messageId = lastAI.message_id || lastAI.id;
           try {
             const parsedCount = parsePhone(normalizedRaw, messageId);
             console.log('[Raymond Phone] parsePhone (bare tags) returned:', parsedCount, 'items');
