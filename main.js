@@ -463,8 +463,8 @@ function registerAIResponseListeners(eventSource, eventTypes) {
     if (eventType) {
       console.log(`[Raymond Phone] Setting up listener for ${key} (${eventType})`);
 
-      eventSource.on(eventType, () => {
-        console.log(`[Raymond Phone] Event triggered: ${key}`);
+      eventSource.on(eventType, (index) => {
+        console.log(`[Raymond Phone] Event triggered: ${key}`, index);
 
         // 获取上下文
         const ctx = getContext();
@@ -846,6 +846,75 @@ function cleanupOldMessages(messageId) {
   }
 }
 
+// 监听消息删除/聊天切换事件
+function setupMessageDeleteListeners() {
+  const eventSource = window.eventSource || window.SillyTavern?.eventSource;
+  const eventTypes = window.event_types || window.SillyTavern?.eventTypes;
+
+  if (!eventSource || !eventTypes) {
+    console.warn('[Raymond Phone] Cannot setup delete listeners: eventSource not available');
+    return;
+  }
+
+  // 删除单条消息
+  if (eventTypes.MESSAGE_DELETED) {
+    eventSource.on(eventTypes.MESSAGE_DELETED, (indexOrRange) => {
+      console.log('[Raymond Phone] MESSAGE_DELETED, arg:', indexOrRange, 'type:', typeof indexOrRange);
+      // 根据消息索引清理对应的手机消息
+      // 可能是单个索引，也可能是范围 {from: x, to: y} 或数组 [x, y, z]
+      if (indexOrRange !== undefined && indexOrRange !== null) {
+        let indices = [];
+        if (typeof indexOrRange === 'number') {
+          indices = [indexOrRange];
+        } else if (Array.isArray(indexOrRange)) {
+          indices = indexOrRange;
+        } else if (typeof indexOrRange === 'object') {
+          // 可能是 {from, to} 范围
+          if (indexOrRange.from !== undefined && indexOrRange.to !== undefined) {
+            for (let i = indexOrRange.from; i <= indexOrRange.to; i++) {
+              indices.push(i);
+            }
+          }
+        }
+        console.log('[Raymond Phone] Cleaning up message indices:', indices);
+        indices.forEach(idx => cleanupOldMessages(String(idx)));
+      }
+    });
+  }
+
+  // 滑动删除消息
+  if (eventTypes.MESSAGE_SWIPE_DELETED) {
+    eventSource.on(eventTypes.MESSAGE_SWIPE_DELETED, (index) => {
+      console.log('[Raymond Phone] MESSAGE_SWIPE_DELETED, index:', index, 'type:', typeof index);
+      if (index !== undefined && index !== null) {
+        cleanupOldMessages(String(index));
+      }
+    });
+  }
+
+  // 切换聊天
+  if (eventTypes.CHAT_CHANGED) {
+    eventSource.on(eventTypes.CHAT_CHANGED, () => {
+      console.log('[Raymond Phone] CHAT_CHANGED, resetting state');
+      // 切换聊天时重置指纹，避免消息混淆
+      window._lastAiFingerprint = null;
+      window._lastProcessedMessageId = null;
+    });
+  }
+
+  // 删除整个聊天
+  if (eventTypes.CHAT_DELETED) {
+    eventSource.on(eventTypes.CHAT_DELETED, (chatId) => {
+      console.log('[Raymond Phone] CHAT_DELETED, chatId:', chatId);
+      // 删除整个聊天时清理该聊天的手机消息
+      // 可以选择清理所有消息，或只清理当前 chatId 的
+      // 这里简单起见，暂不清理，依赖 localStorage 自动清理
+    });
+  }
+
+  console.log('[Raymond Phone] Delete listeners registered');
+}
+
 
 // 自动初始化
 $(async function() {
@@ -858,6 +927,8 @@ $(async function() {
     console.log('[Raymond Phone] setupCharacterSwitchListener() completed');
     await setupAIResponseListener();
     console.log('[Raymond Phone] setupAIResponseListener() completed');
+    setupMessageDeleteListeners();
+    console.log('[Raymond Phone] setupMessageDeleteListeners() completed');
     console.log('[Raymond Phone] All initializations complete');
 
     // 添加全局调试函数，方便在控制台手动检查

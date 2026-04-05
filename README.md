@@ -19,6 +19,43 @@ Mochi Phone (Ray Mobile Shell) 是一个为 SillyTavern 设计的交互式手机
 
 ---
 
+## 🔄 模块拆分迁移说明
+
+### 背景
+项目最初是一个巨大的单文件 `index.js`（约8000+行，包含所有功能），随着功能增加，维护难度越来越大。因此开始逐步将代码拆分为模块化结构。
+
+### 迁移原则
+1. **渐进式迁移**: 不一次性重写，而是在原文件中标记已迁移部分，逐步拆分
+2. **模块化优先**: 每个功能模块独立维护，职责清晰
+3. **向后兼容**: `index.js` 仍可运行，但已标注为"已弃用"
+
+### 迁移状态
+
+| 模块 | 原文件位置 | 新文件位置 | 状态 |
+|------|------------|------------|------|
+| 主入口 | `index.js` | `main.js` | ✅ 已迁移 |
+| 消息模块 | `index.js` (SMS/群聊/语音等) | `src/modules/messages.js` | ✅ 已迁移 |
+| 主题模块 | `index.js` | `src/modules/themes.js` | ✅ 已迁移 |
+| 设置模块 | `index.js` | `src/modules/settings.js` | ✅ 已迁移 |
+| 朋友圈模块 | `index.js` | `src/modules/moments.js` | ✅ 已迁移 |
+| CSS样式 | `index.js` 内联 (15586行) | `src/styles/` | ✅ 已迁移 |
+| HTML模板 | `index.js` | `src/html.js` | ✅ 已迁移 |
+| 日记模块 | `index.js` | - | ⏳ 待迁移 |
+| 小红书模块 | `index.js` | - | ⏳ 待迁移 |
+| 银行卡模块 | `index.js` | - | ⏳ 待迁移 |
+| 游戏模块 | `index.js` | - | ⏳ 待迁移 |
+
+### 待迁移功能（仍在 index.js 中）
+- 日记 (`diary`)
+- 小红书 (`xhs`)
+- 银行卡 (`bank`)
+- 游戏文件夹 (`folder-games`)
+- 2048游戏 (`g2048`)
+- 黄金矿工 (`ggold`)
+- 飞行棋 (`game`)
+
+---
+
 ## 🏗️ 架构设计
 
 ### 核心原则
@@ -32,33 +69,37 @@ Mochi Phone (Ray Mobile Shell) 是一个为 SillyTavern 设计的交互式手机
 ```
 mochi-phone/
 ├── manifest.json          # 插件清单
-├── main.js               # 主入口（CSS注入、路由控制、模块初始化）
-├── index.js              # 原始入口文件（已弃用，仅作备份）
+├── main.js               # 主入口（从 index.js 拆分而来）
+├── index.js              # 原始入口文件（已弃用，仍保留完整功能）
+├── README.md             # 项目文档
+├── CHANGELOG.md          # 更新日志
+├── AI_PARSING_DEBUG.md   # AI 解析调试文档
 ├── src/
-│   ├── html.js           # HTML模板
+│   ├── html.js           # HTML模板（从 index.js 拆分）
 │   ├── styles/
-│   │   ├── index.js      # CSS主入口（导出 css.js 内容）
-│   │   ├── css.js        # 原始CSS（4502行，264KB，已弃用）
+│   │   ├── index.js      # CSS主入口
+│   │   ├── css.js        # 原始CSS（已弃用，保留备份）
 │   │   ├── README.md     # CSS模块化文档
-│   │   └── modules/      # 12个CSS模块文件（开发维护参考）
-│   │       ├── base.css      # 基础样式 (2.2KB)
-│   │       ├── common.css    # 公共组件 (56.7KB)
-│   │       ├── frame.css     # 手机框架 (2.2KB)
-│   │       ├── homescreen.css # 主屏幕 (5.4KB)
-│   │       ├── lockscreen.css # 锁屏界面 (5.4KB)
-│   │       ├── messages.css   # 消息模块 (8.4KB)
-│   │       ├── moments.css   # 朋友圈模块 (22.8KB)
-│   │       ├── themes.css    # 主题样式 (46.7KB)
-│   │       ├── settings.css  # 设置模块 (14.5KB)
-│   │       ├── games.css     # 游戏模块 (18.9KB)
-│   │       ├── diary.css     # 日记模块 (14.7KB)
-│   │       ├── xhs.css       # 小红书模块 (17.5KB)
-│   │       └── bank.css      # 银行卡模块 (9.3KB)
+│   │   ├── BUILD_GUIDE.md # 构建指南
+│   │   └── modules/      # CSS模块（从 css.js 拆分）
+│   │       ├── base.css      # 基础样式
+│   │       ├── common.css    # 公共组件
+│   │       ├── frame.css     # 手机框架
+│   │       ├── homescreen.css # 主屏幕
+│   │       ├── lockscreen.css # 锁屏界面
+│   │       ├── messages.css   # 消息模块
+│   │       ├── moments.css   # 朋友圈模块
+│   │       ├── themes.css    # 主题样式
+│   │       ├── settings.css  # 设置模块
+│   │       ├── games.css     # 游戏模块
+│   │       ├── diary.css     # 日记模块
+│   │       ├── xhs.css       # 小红书模块
+│   │       └── bank.css      # 银行卡模块
 │   └── modules/
-│       ├── messages.js   # 消息模块（1463行）
-│       ├── themes.js     # 主题模块（427行）
-│       ├── settings.js   # 设置模块（285行）
-│       ├── moments.js    # 朋友圈模块（239行）
+│       ├── messages.js   # 消息模块（从 index.js 拆分）
+│       ├── themes.js     # 主题模块（从 index.js 拆分）
+│       ├── settings.js   # 设置模块（从 index.js 拆分）
+│       ├── moments.js    # 朋友圈模块（从 index.js 拆分）
 │       └── placeholder.js # 占位符模块（未迁移功能提示）
 ```
 
@@ -212,7 +253,21 @@ const messageId = String(messageIdx);
 
 注意：`lastAI.message_id` 和 `lastAI.id` 在新版 SillyTavern 中都是 `undefined`，因此使用消息数组索引作为唯一标识。
 
-### 6. AI 响应解析格式
+### 6. 事件监听机制
+
+**监听的 SillyTavern 事件**:
+- `GENERATION_ENDED` - AI 消息生成完成
+- `MESSAGE_SWIPED` - 消息被滑动查看
+- `MESSAGE_DELETED` - 删除单条消息
+- `MESSAGE_SWIPE_DELETED` - 滑动删除消息
+- `CHAT_CHANGED` - 切换聊天
+- `CHAT_DELETED` - 删除整个聊天
+
+**消息重新生成处理**:
+- 通过指纹 `_lastAiFingerprint` 检测是否是同一 chatId 的新消息
+- 如果是，调用 `cleanupOldMessages(oldMessageId)` 清理旧的手机消息
+
+### 7. AI 响应解析格式
 
 监听 `<PHONE>` 标签，支持以下指令:
 - `[SMS:内容]` - 发送短信
@@ -494,5 +549,25 @@ function getContext() {
 
 ---
 
-*项目宪法版本: 1.1.0*  
+## 📋 开发路线
+
+**已完成**:
+- ✅ 主入口从 index.js 拆分到 main.js
+- ✅ 消息模块拆分
+- ✅ 主题模块拆分
+- ✅ 设置模块拆分
+- ✅ 朋友圈模块拆分
+- ✅ CSS模块化拆分（14个逻辑模块）
+- ✅ HTML模板拆分
+- ✅ 事件监听机制完善（MESSAGE_DELETED 等）
+
+**待迁移**:
+- ⏳ 日记模块
+- ⏳ 小红书模块
+- ⏳ 银行卡模块
+- ⏳ 游戏模块（2048、黄金矿工、飞行棋）
+
+---
+
+*项目宪法版本: 1.2.0*  
 *最后更新: 2026-04-05*
