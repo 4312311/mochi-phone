@@ -772,27 +772,29 @@ function parsePhone(block, messageId) {
 function cleanupOldPhoneMessages(messageId) {
   console.log('[Raymond Phone] Cleaning up old phone messages, messageId:', messageId);
 
+  // 如果没有有效的 messageId，不删除任何消息（防止误删）
+  const hasValidMessageId = messageId !== undefined && messageId !== null && messageId !== '';
+  if (!hasValidMessageId) {
+    console.log('[Raymond Phone] No valid messageId, skipping cleanup to prevent accidental deletion');
+    return;
+  }
+
   let cleanedCount = 0;
 
-  // 如果提供了 messageId，只删除该楼层对应的消息
-  // 否则删除所有消息
+  // 只有提供了有效的 messageId，才只删除该楼层对应的消息
   Object.keys(STATE.threads).forEach(threadId => {
     const thread = STATE.threads[threadId];
     if (thread && thread.messages) {
       const oldLength = thread.messages.length;
 
-      if (messageId) {
-        // 只删除带有指定 messageId 的消息
-        thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
-      } else {
-        // 删除所有消息
-        thread.messages = [];
-        thread.unread = 0;
-      }
+      // 只删除带有指定 messageId 的消息
+      thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
 
       const newLength = thread.messages.length;
       cleanedCount += (oldLength - newLength);
-      console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength - newLength, 'messages');
+      if (oldLength - newLength > 0) {
+        console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength - newLength, 'messages');
+      }
     }
   });
 
@@ -1185,8 +1187,6 @@ function renderBubbles(threadId) {
         </div>
         <div class="rp-bts">${msg.time}</div>
       `);
-      const delBtn = $(`<button class="rp-del-btn" title="删除" data-msgidx="${msgIdx}" data-threadid="${threadId}">${DEL_SVG_EARLY}</button>`);
-      wrap.append(delBtn);
       area.append(wrap); return;
     }
     // ── 群聊消息 (NPC/char 发送，带编辑/删除按钮) ──
