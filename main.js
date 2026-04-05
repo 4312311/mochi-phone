@@ -770,7 +770,7 @@ function cleanupOldMessages() {
   console.log('[Raymond Phone] AI response listener setup complete');
 }
 
-  // 自动初始化
+// 自动初始化
 $(async function() {
   try {
     console.log('[Raymond Phone] ===== INITIALIZATION START =====');
@@ -781,19 +781,19 @@ $(async function() {
     console.log('[Raymond Phone] setupCharacterSwitchListener() completed');
     await setupAIResponseListener();
     console.log('[Raymond Phone] setupAIResponseListener() completed');
-  console.log('[Raymond Phone] All initializations complete');
+    console.log('[Raymond Phone] All initializations complete');
 
-  // 添加全局调试函数，方便在控制台手动检查
-  window.checkEventSource = function() {
-    console.log('[Raymond Phone] Manual check:');
-    console.log('  window.eventSource:', window.eventSource);
-    console.log('  window.event_types:', window.event_types);
-    console.log('  SillyTavern:', window.SillyTavern);
-    console.log('  SillyTavern.eventSource:', window.SillyTavern?.eventSource);
-    console.log('  SillyTavern.eventTypes:', window.SillyTavern?.eventTypes);
-    console.log('  SillyTavern.event_types:', window.SillyTavern?.event_types);
-  };
-} catch(e) {
+    // 添加全局调试函数，方便在控制台手动检查
+    window.checkEventSource = function() {
+      console.log('[Raymond Phone] Manual check:');
+      console.log('  window.eventSource:', window.eventSource);
+      console.log('  window.event_types:', window.event_types);
+      console.log('  SillyTavern:', window.SillyTavern);
+      console.log('  SillyTavern.eventSource:', window.SillyTavern?.eventSource);
+      console.log('  SillyTavern.eventTypes:', window.SillyTavern?.eventTypes);
+      console.log('  SillyTavern.event_types:', window.SillyTavern?.event_types);
+    };
+  } catch(e) {
     console.error('[Raymond Phone] init failed:', e);
   }
 });
