@@ -291,6 +291,62 @@ function getContext() {
 }
 
 // Parse phone block from AI response
+// ── 辅助：从文本内容中提取 <img src="..."> 并返回 {imgs, cleanText, pendingPrompts}
+function extractImgsFromText(raw) {
+  const imgs = [];
+  const pendingPrompts = [];
+
+  // 1) 标准 <img src="...">
+  const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
+  let im;
+  while ((im = imgRe.exec(raw)) !== null) {
+    imgs.push(im[1]);
+  }
+
+  if (imgs.length === 0) {
+    const looseImgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi;
+    while ((im = looseImgRe.exec(raw)) !== null) {
+      imgs.push(im[1]);
+    }
+  }
+
+  if (imgs.length === 0) {
+    const ultraLooseImgRe = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
+    while ((im = ultraLooseImgRe.exec(raw)) !== null) {
+      imgs.push(im[1]);
+    }
+  }
+
+  // 2) 智绘姬格式 image###prompt###
+  const chatu8Re = /image###([\s\S]*?)###/gi;
+  let cm;
+  while ((cm = chatu8Re.exec(raw)) !== null) {
+    const prompt = (cm[1] || '').trim();
+    if (prompt) pendingPrompts.push(prompt);
+  }
+
+  // 3) 旧格式兼容：<img prompt="...">
+  const imgPromptRe = /<img\b(?![^>]*\bsrc=)[^>]*\bprompt=["']([^"']+)["'][^>]*\/?>/gi;
+  let pm;
+  while ((pm = imgPromptRe.exec(raw)) !== null) {
+    const prompt = (pm[1] || '').trim();
+    if (prompt) pendingPrompts.push(prompt);
+  }
+
+  let cleanText = raw
+    .replace(/<img\b[^>]*>>*/gi, '')
+    .replace(/image###[\s\S]*?###/gi, '')
+    .replace(/<pic\b[^>]*>[\s\S]*?<\/pic>/gi, '')
+    .replace(/<pic\b[\s\S]*?\/>/gi, '')
+    .replace(/<pic\b[^>]*>/gi, '')
+    .replace(/<imageTag>[\s\S]*?<\/imageTag>/gi, '')
+    .replace(/<image>[\s\S]*?<\/image>/gi, '')
+    .replace(/<imgthink>[\s\S]*?<\/imgthink>/gi, '')
+    .trim();
+
+  return { imgs, cleanText, pendingPrompts };
+}
+
 function parsePhone(block, messageId) {
   console.log('[parsePhone] ========== START PARSING ==========');
   console.log('[parsePhone] Input block type:', typeof block);
@@ -317,78 +373,6 @@ function parsePhone(block, messageId) {
   function _isUserFrom(fromStr) {
     if (!_parseUserName || !fromStr) return false;
     return fromStr.trim().toLowerCase() === _parseUserName.toLowerCase();
-  }
-
-  // ── 辅助：从文本内容中提取 <img src="..."> 并返回 {imgs, cleanText, pendingPrompts}
-  function extractImgsFromText(raw) {
-    const imgs = [];
-    const pendingPrompts = [];
-
-    console.log('[extractImgsFromText] Input raw:', raw.substring(0, 200));
-
-    // 1) 标准 <img src="..."> —— 生图插件替换后的最终形态
-    // 匹配 <img ... src="..." ... />，确保src是独立的属性名
-    const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
-    let im;
-    console.log('[extractImgsFromText] Starting img tag matching with regex:', imgRe);
-    while ((im = imgRe.exec(raw)) !== null) {
-      imgs.push(im[1]);
-      console.log('[extractImgsFromText] Found img:', im[1]);
-    }
-    console.log('[extractImgsFromText] Img tag matching completed, found:', imgs.length, 'images');
-
-    // 如果标准正则没匹配到，尝试更宽松的正则（不要求闭合标签）
-    if (imgs.length === 0) {
-      console.log('[extractImgsFromText] Standard regex found nothing, trying looser regex...');
-      const looseImgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi;
-      while ((im = looseImgRe.exec(raw)) !== null) {
-        imgs.push(im[1]);
-        console.log('[extractImgsFromText] Looser regex found img:', im[1]);
-      }
-      console.log('[extractImgsFromText] Looser regex found:', imgs.length, 'images');
-    }
-
-    // 如果还没匹配到，尝试最宽松的正则（匹配任何含有src属性的img）
-    if (imgs.length === 0) {
-      console.log('[extractImgsFromText] Still no images, trying ultra-loose regex...');
-      const ultraLooseImgRe = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
-      while ((im = ultraLooseImgRe.exec(raw)) !== null) {
-        imgs.push(im[1]);
-        console.log('[extractImgsFromText] Ultra-loose regex found img:', im[1]);
-      }
-      console.log('[extractImgsFromText] Ultra-loose regex found:', imgs.length, 'images');
-    }
-
-    // 2) 智绘姬格式 image###prompt### —— 提取 prompt，存为 pending_image 占位
-    const chatu8Re = /image###([\s\S]*?)###/gi;
-    let cm;
-    while ((cm = chatu8Re.exec(raw)) !== null) {
-      const prompt = (cm[1] || '').trim();
-      if (prompt) pendingPrompts.push(prompt);
-    }
-
-    // 3) <pic light_intensity="..." prompt="..." /> —— ComfyUI 世界书触发格式
-
-    // 4) 旧格式兼容：<img prompt="..." light_intensity="..."/> 且没有 src 属性
-    const imgPromptRe = /<img\b(?![^>]*\bsrc=)[^>]*\bprompt=["']([^"']+)["'][^>]*\/?>/gi;
-    let pm;
-    while ((pm = imgPromptRe.exec(raw)) !== null) {
-      const prompt = (pm[1] || '').trim();
-      if (prompt) pendingPrompts.push(prompt);
-    }
-
-    let cleanText = raw
-      .replace(/<img\b[^>]*>>*/gi, '')               // 吃掉img标签及ComfyUI插件可能残留的多余>
-      .replace(/image###[\s\S]*?###/gi, '')          // 智绘姬 image###...###
-      .replace(/<pic\b[^>]*>[\s\S]*?<\/pic>/gi, '')  // <pic>...</pic> 格式
-      .replace(/<pic\b[\s\S]*?\/>/gi, '')            // <pic .../> 自闭合（含prompt内有>的情况）
-      .replace(/<pic\b[^>]*>/gi, '')                 // 兜底：非自闭合 <pic ...> 无 </pic> 的残留开标签
-      .replace(/<imageTag>[\s\S]*?<\/imageTag>/gi, '') // 主楼生图世界书外壳
-      .replace(/<image>[\s\S]*?<\/image>/gi, '')     // <image>...</image> 包裹块
-      .replace(/<imgthink>[\s\S]*?<\/imgthink>/gi, '') // <imgthink> 思考过程
-      .trim();
-
-    return { imgs, cleanText, pendingPrompts };
   }
 
   // ── 辅助：把图片 src 路由到指定线程
