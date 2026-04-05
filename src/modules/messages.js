@@ -469,33 +469,53 @@ function parsePhone(block, messageId) {
     const msgTime = time || fallbackTime;
     console.log('[Phone:diag] incomingMsg called', { threadId, text: text.slice(0,40), time: msgTime });
 
-    // 先发已有图片（生图插件已替换完的 <img src>）
-    console.log('[parsePhone] Routing images to thread:', { threadId, imgCount: smsImgs.length, msgTime });
+    const th = STATE.threads[threadId];
+    if (!th) {
+      console.log('[Phone:diag] Thread not found:', threadId);
+      continue;
+    }
+
+    // 构建消息列表：图片在前，文本在后（保持顺序）
+    const msgItems = [];
+
+    // 图片消息
     smsImgs.forEach((src, idx) => {
-      console.log(`[parsePhone] Routing image ${idx + 1}/${smsImgs.length}:`, src);
-      routeImgToThread(threadId, src, msgTime, messageId);
+      const isDup = th.messages.some(msg => msg.type === 'image' && msg.src === src);
+      if (!isDup) {
+        const msgObj = { id: `aimg_${Date.now()}_${idx}`, from: threadId, type: 'image', time: msgTime, src };
+        if (messageId) msgObj.messageId = messageId;
+        msgItems.push(msgObj);
+        console.log(`[parsePhone] Added image to batch:`, src.slice(0, 50));
+      }
     });
 
-    // 发送文本消息
+    // 文本消息
     if (text) {
-      const th = STATE.threads[threadId];
-      if (th) {
-        // 去重：检查相同 messageId、相同内容的消息是否已存在
-        const isDup = messageId && th.messages.some(msg => msg.messageId === messageId && msg.text === text);
-        if (isDup) {
-          console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20) });
-        } else {
-          const msgObj = { from: threadId, text, time: msgTime };
-          if (messageId) msgObj.messageId = messageId;
-          th.messages.push(msgObj);
-          if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
-          refreshBadges(); updatePreviews();
-          if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
-          showBanner(th.name, text, msgTime);
-          saveState();
-          parsedCount++;
-        }
+      // 去重：优先用 messageId，否则用 text+time 组合判断
+      let isDup = false;
+      if (messageId) {
+        isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text);
+      } else {
+        isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
       }
+      if (isDup) {
+        console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20), messageId });
+      } else {
+        const msgObj = { from: threadId, text, time: msgTime };
+        if (messageId) msgObj.messageId = messageId;
+        msgItems.push(msgObj);
+      }
+    }
+
+    // 批量添加消息
+    if (msgItems.length > 0) {
+      msgItems.forEach(msgObj => th.messages.push(msgObj));
+      if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
+      refreshBadges(); updatePreviews();
+      if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
+      if (text) showBanner(th.name, text, msgTime);
+      saveState();
+      parsedCount += msgItems.length;
     }
 
     // ComfyUI <pic> 触发词：把 prompt → threadId 记录到 STATE._pendingComfyPics
@@ -585,12 +605,13 @@ function parsePhone(block, messageId) {
       };
     }
     const grpThread = STATE.threads[groupId];
-    const isDupGV = grpThread.messages.some(msg => msg.type === 'group_voice' && msg.name === fromRaw && msg.voiceText === voiceText);
+    // 去重：用 text 而非 voiceText
+    const isDupGV = grpThread.messages.some(msg => msg.type === 'group_voice' && msg.name === fromRaw && msg.text === voiceText);
     if (!isDupGV) {
       const senderTh = findOrCreateThread(fromRaw);
       grpThread.messages.push({
         id: `ggv_${Date.now()}`, from: 'incoming',
-        type: 'group_voice', name: fromRaw, time, duration, voiceText,
+        type: 'group_voice', name: fromRaw, time, duration, text: voiceText,
         initials: senderTh.initials, avatarBg: senderTh.avatarBg
       });
       grpThread.unread = (grpThread.unread || 0) + 1;
@@ -1360,9 +1381,22 @@ function incomingVoice(fromRaw, time, duration, text) {
   console.log('[Raymond Phone] Added voice message:', { fromRaw, duration, text: text?.slice(0, 20) });
 }
 
-// Play voice (placeholder)
-function playVoice(voiceId) {
-  console.log('[Messages] Play voice:', voiceId);
+// Play voice
+function playVoice(threadId, voiceId) {
+  console.log('[Raymond Phone] Play voice:', threadId, voiceId);
+  const th = STATE.threads[threadId];
+  if (!th) return;
+  const msg = th.messages.find(m => m.id === voiceId);
+  if (msg) {
+    msg.played = true;
+    saveState();
+    renderBubbles(threadId);
+  }
+}
+
+// 暴露到全局
+if (typeof window !== 'undefined') {
+  window.playVoice = playVoice;
 }
 
 // Incoming group message
@@ -1379,23 +1413,56 @@ function incomingGroupMsg(fromRaw, groupName, time, text) {
   }
   const thread = STATE.threads[groupId];
   const senderTh = findOrCreateThread(fromRaw);
-  // 去重:同 from+time+text 已存在则跳过
-  const isDup = thread.messages.some(m => m.type === 'group_msg' && m.name === fromRaw && m.text === text);
+
+  // 从 text 中提取图片（和 SMS 一样的逻辑）
+  const { imgs, cleanText } = extractImgsFromText(text);
+  const cleanTextFinal = sanitizeSmsText(cleanText);
+
+  // 构建消息列表：图片在前，文本在后
+  const msgItems = [];
+
+  // 图片消息
+  imgs.forEach((src, idx) => {
+    const isDup = thread.messages.some(msg => msg.type === 'image' && msg.src === src);
+    if (!isDup) {
+      msgItems.push({
+        id: `gimg_${Date.now()}_${idx}`, from: groupId,
+        type: 'image', time, src,
+        name: fromRaw, initials: senderTh.initials, avatarBg: senderTh.avatarBg
+      });
+    }
+  });
+
+  // 文本消息去重
+  const isDup = thread.messages.some(m => m.type === 'group_msg' && m.name === fromRaw && m.text === cleanTextFinal);
   if (isDup) {
-    console.log('[Raymond Phone] Skip duplicate GMSG:', fromRaw, text?.slice(0, 20));
+    console.log('[Raymond Phone] Skip duplicate GMSG:', fromRaw, cleanTextFinal?.slice(0, 20));
+    // 但仍添加图片（如果没有重复）
+    if (msgItems.length > 0) {
+      msgItems.forEach(msgObj => thread.messages.push(msgObj));
+      thread.unread = (thread.unread || 0) + 1;
+      refreshBadges(); renderThreadList();
+      if (STATE.currentThread === groupId) renderBubbles(groupId);
+      saveState();
+    }
     return;
   }
-  thread.messages.push({
+
+  // 文本消息
+  msgItems.push({
     id: `gm_${Date.now()}`, from: 'incoming',
-    type: 'group_msg', name: fromRaw, time, text,
+    type: 'group_msg', name: fromRaw, time, text: cleanTextFinal,
     initials: senderTh.initials, avatarBg: senderTh.avatarBg
   });
+
+  // 批量添加
+  msgItems.forEach(msgObj => thread.messages.push(msgObj));
   thread.unread = (thread.unread || 0) + 1;
   refreshBadges(); renderThreadList();
   if (STATE.currentThread === groupId) renderBubbles(groupId);
-  showBanner(groupName, `${fromRaw}:${text.slice(0,22)}${text.length>22?'...':''}`);
+  showBanner(groupName, `${fromRaw}:${cleanTextFinal.slice(0,22)}${cleanTextFinal.length>22?'...':''}`);
   saveState();
-  console.log('[Raymond Phone] Added group message:', { groupName, fromRaw, text: text?.slice(0, 20) });
+  console.log('[Raymond Phone] Added group message:', { groupName, fromRaw, text: cleanTextFinal?.slice(0, 20), imgCount: imgs.length });
 }
 
 // Incoming group voice (placeholder)
