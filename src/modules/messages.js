@@ -384,16 +384,25 @@ function parsePhone(block, messageId) {
       if (!th) return;
       // 按源码位置排序
       items.sort((a, b) => a.index - b.index);
-      console.log('[Raymond Phone] Message order for thread', threadId, ':', items.map(item => {
+      console.log('[Raymond Phone img fix] Message order for thread', threadId, ':', items.map(item => {
         if (item.msgObj.type === 'image') return 'IMAGE';
+        if (item.msgObj.type === 'group_image') return 'GROUP_IMAGE';
         if (item.msgObj.type === 'voice') return 'VOICE';
+        if (item.msgObj.type === 'group_voice') return 'GROUP_VOICE';
         if (item.msgObj.type === 'hongbao') return 'HONGBAO';
+        if (item.msgObj.type === 'group_hongbao') return 'GROUP_HONGBAO';
         return 'SMS';
       }));
+      
+      // 清空线程的消息数组，只保留没有messageId的消息（用户发送的消息）
+      th.messages = th.messages.filter(msg => !msg.messageId);
+      
+      // 添加新消息
       items.forEach(({ msgObj }) => {
         th.messages.push(msgObj);
         added++;
       });
+      
       if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread += items.length;
       if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
       refreshBadges(); updatePreviews();
@@ -603,8 +612,11 @@ function parsePhone(block, messageId) {
           msgItems.forEach((msgObj, idx) => {
             // 使用递增的源码位置，确保同一SMS标签内的消息按添加顺序排列
             // 同时保证不同SMS标签间的消息也按正确顺序排列
-            _queueMessage(threadId, msgObj, sourceIndex + idx * 0.1);
+            const itemIndex = sourceIndex + idx * 0.1;
+            console.log(`[Raymond Phone img fix] Adding item to queue: type=${msgObj.type}, index=${itemIndex}`);
+            _queueMessage(threadId, msgObj, itemIndex);
           });
+          console.log(`[Raymond Phone img fix] Added ${msgItems.length} items to batch for thread ${threadId}:`, msgItems.map(item => item.type));
           parsedCount += msgItems.length;
         }
 
@@ -725,7 +737,7 @@ function parsePhone(block, messageId) {
         
         const groupName = match[2].trim();
         const msgTime = match[3].trim();
-        const rawContent = match[4].trim();
+        const rawContent = match[4] || '';
         const groupId = `grp_${groupName}`;
         
         // 提取图片和清理文本
@@ -750,7 +762,6 @@ function parsePhone(block, messageId) {
         const msgItems = [];
         
         // 解析原始内容，按照图片和文本的实际顺序添加消息
-        const rawContent = match[4] || '';
         let lastIndex = 0;
         
         // 查找所有图片标签
@@ -783,9 +794,9 @@ function parsePhone(block, messageId) {
           const src = imgMatch[1];
           let isDup = false;
           if (messageId) {
-            isDup = grpThread.messages.some(msg => msg.messageId === messageId && msg.type === 'group_image' && msg.src === src);
+            isDup = grpThread.messages.some(msg => msg.messageId === messageId && msg.type === 'group_image' && msg.src === src && msg.name === gmsgFrom);
           } else {
-            isDup = grpThread.messages.some(msg => msg.type === 'group_image' && msg.src === src);
+            isDup = grpThread.messages.some(msg => msg.type === 'group_image' && msg.src === src && msg.name === gmsgFrom);
           }
           if (!isDup) {
             const msgObj = {
@@ -800,7 +811,7 @@ function parsePhone(block, messageId) {
             };
             if (messageId) msgObj.messageId = messageId;
             msgItems.push(msgObj);
-            console.log(`[Raymond Phone] Added group image to batch:`, src.slice(0, 50));
+            console.log(`[Raymond Phone img fix] Added group image to batch:`, src.slice(0, 50), 'from', gmsgFrom, 'type', msgObj.type);
           }
           
           lastIndex = imgRe.lastIndex;
@@ -832,8 +843,11 @@ function parsePhone(block, messageId) {
           const sourceIndex = match.index; // 记录源码位置
           msgItems.forEach((msgObj, idx) => {
             // 使用递增的源码位置，确保同一GMSG标签内的消息按添加顺序排列
-            _queueMessage(groupId, msgObj, sourceIndex + idx * 0.1);
+            const itemIndex = sourceIndex + idx * 0.1;
+            console.log(`[Raymond Phone img fix] Adding group item to queue: type=${msgObj.type}, name=${msgObj.name}, index=${itemIndex}`);
+            _queueMessage(groupId, msgObj, itemIndex);
           });
+          console.log(`[Raymond Phone img fix] Added ${msgItems.length} items to batch for group ${groupId}:`, msgItems.map(item => item.type));
           parsedCount += msgItems.length;
         }
         break;
