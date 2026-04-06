@@ -500,12 +500,12 @@ function parsePhone(block, messageId) {
         const msgObj = { id: `aimg_${Date.now()}_${idx}`, from: threadId, type: 'image', time: msgTime, src };
         if (messageId) msgObj.messageId = messageId;
         msgItems.push(msgObj);
-        console.log(`[parsePhone] Added image to batch:`, src.slice(0, 50));
+        console.log(`[Raymond Phone] Added image to batch:`, src.slice(0, 50));
       }
     });
 
     // 文本消息
-    if (text) {
+    if (text && text.trim()) {
       // 去重：优先用 messageId，否则用 text+time 组合判断
       let isDup = false;
       if (messageId) {
@@ -525,7 +525,11 @@ function parsePhone(block, messageId) {
     // 批量添加消息（队列模式，按源码顺序排序）
     if (msgItems.length > 0) {
       const sourceIndex = smsTagRe.lastIndex - m[0].length; // 记录源码位置
-      msgItems.forEach(msgObj => _queueMessage(threadId, msgObj, sourceIndex));
+      msgItems.forEach((msgObj, idx) => {
+        // 为每个消息计算更精确的源码位置，确保图片在前，文本在后
+        const preciseIndex = sourceIndex + idx * 10; // 为每个消息分配不同的索引，保证顺序
+        _queueMessage(threadId, msgObj, preciseIndex);
+      });
       parsedCount += msgItems.length;
     }
 
@@ -1172,10 +1176,27 @@ function updatePreviews() {
 
   Object.values(STATE.threads).forEach(th => {
     const lastMsg = th.messages.at(-1);
-    const senderLabel = lastMsg ? (lastMsg.from === 'user' ? '我' : th.name.split(' ')[0]) : '';
-    const previewFull = lastMsg ? (senderLabel + ':' + lastMsg.text) : '暂无消息';
-    const preview = previewFull.length > 28 ? previewFull.slice(0, 27) + '...' : previewFull;
-    const time    = lastMsg ? lastMsg.time : '';
+    let previewText = '暂无消息';
+    let time = '';
+    
+    if (lastMsg) {
+      time = lastMsg.time || '';
+      const senderLabel = lastMsg.from === 'user' ? '我' : th.name.split(' ')[0];
+      
+      if (lastMsg.type === 'image') {
+        previewText = senderLabel + ': [图片]';
+      } else if (lastMsg.type === 'voice') {
+        previewText = senderLabel + ': [语音]';
+      } else if (lastMsg.type === 'group_voice') {
+        previewText = senderLabel + ': [语音]';
+      } else if (lastMsg.text) {
+        previewText = senderLabel + ':' + lastMsg.text;
+      } else {
+        previewText = senderLabel + ': [消息]';
+      }
+    }
+    
+    const preview = previewText.length > 28 ? previewText.slice(0, 27) + '...' : previewText;
     const badgeDisplay = th.unread > 0 ? '' : 'display:none';
     const badgeCount   = th.unread;
 
@@ -1256,7 +1277,7 @@ function renderBubbles(threadId) {
       `);
       area.append(wrap); return;
     }
-    // ── 群聊消息 (NPC/char 发送，带编辑/删除按钮) ──
+    // ── 群聊消息 (NPC/char 发送) ──
     if (msg.type === 'group_msg') {
       const customImg = STATE.avatars && STATE.avatars[msg.name];
       const avEl = customImg
@@ -1266,13 +1287,6 @@ function renderBubbles(threadId) {
       const inner = $('<div>');
       inner.append($('<div>').addClass('rp-grp-sender').text(msg.name));
       inner.append($('<div>').addClass('rp-bubble rp-recv').text(msg.text));
-      // 横排按钮组（编辑 + 删除）
-      const DEL_SVG_GM = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;pointer-events:none"><path d="M3 3.5L3.7 11.5C3.75 12.05 4.2 12.5 4.75 12.5H9.25C9.8 12.5 10.25 12.05 10.3 11.5L11 3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2 3.5H12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5.5 3.5V2.5C5.5 2.22 5.72 2 6 2H8C8.28 2 8.5 2.22 8.5 2.5V3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="6" x2="7" y2="10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="5.5" y1="6.2" x2="5.8" y2="10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="8.5" y1="6.2" x2="8.2" y2="10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
-      const editBtnGM = $(`<button class="rp-edit-btn" title="编辑" data-msgidx="${msgIdx}" data-threadid="${threadId}"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;pointer-events:none"><rect x="3.5" y="1.2" width="4" height="9.5" rx="0.8" transform="rotate(38 7 7)" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M9.8 2.5 L11.4 4.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M3.2 9.8 L2.5 11.6 L4.3 10.9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="currentColor" opacity="0.7"/></svg></button>`);
-      const delBtnGM = $(`<button class="rp-del-btn" title="删除" data-msgidx="${msgIdx}" data-threadid="${threadId}">${DEL_SVG_GM}</button>`);
-      const btnRowGM = $('<div>').addClass('rp-btn-row');
-      btnRowGM.append(editBtnGM, delBtnGM);
-      inner.append(btnRowGM);
       inner.append($('<div>').addClass('rp-bts').text(msg.time));
       wrap.append(avEl, inner);
       area.append(wrap); return;
@@ -1484,36 +1498,41 @@ function incomingGroupMsg(fromRaw, groupName, time, text) {
     }
   });
 
-  // 文本消息去重
-  const isDup = thread.messages.some(m => m.type === 'group_msg' && m.name === fromRaw && m.text === cleanTextFinal);
-  if (isDup) {
-    console.log('[Raymond Phone] Skip duplicate GMSG:', fromRaw, cleanTextFinal?.slice(0, 20));
-    // 但仍添加图片（如果没有重复）
-    if (msgItems.length > 0) {
-      msgItems.forEach(msgObj => thread.messages.push(msgObj));
-      thread.unread = (thread.unread || 0) + 1;
-      refreshBadges(); renderThreadList();
-      if (STATE.currentThread === groupId) renderBubbles(groupId);
-      saveState();
+  // 只有当有文本内容时才添加文本消息
+  if (cleanTextFinal.trim()) {
+    // 文本消息去重
+    const isDup = thread.messages.some(m => m.type === 'group_msg' && m.name === fromRaw && m.text === cleanTextFinal);
+    if (isDup) {
+      console.log('[Raymond Phone] Skip duplicate GMSG:', fromRaw, cleanTextFinal?.slice(0, 20));
+      // 但仍添加图片（如果没有重复）
+      if (msgItems.length > 0) {
+        msgItems.forEach(msgObj => thread.messages.push(msgObj));
+        thread.unread = (thread.unread || 0) + 1;
+        refreshBadges(); renderThreadList();
+        if (STATE.currentThread === groupId) renderBubbles(groupId);
+        saveState();
+      }
+      return;
     }
-    return;
+
+    // 文本消息
+    msgItems.push({
+      id: `gm_${Date.now()}`, from: 'incoming',
+      type: 'group_msg', name: fromRaw, time, text: cleanTextFinal,
+      initials: senderTh.initials, avatarBg: senderTh.avatarBg
+    });
   }
 
-  // 文本消息
-  msgItems.push({
-    id: `gm_${Date.now()}`, from: 'incoming',
-    type: 'group_msg', name: fromRaw, time, text: cleanTextFinal,
-    initials: senderTh.initials, avatarBg: senderTh.avatarBg
-  });
-
   // 批量添加
-  msgItems.forEach(msgObj => thread.messages.push(msgObj));
-  thread.unread = (thread.unread || 0) + 1;
-  refreshBadges(); renderThreadList();
-  if (STATE.currentThread === groupId) renderBubbles(groupId);
-  showBanner(groupName, `${fromRaw}:${cleanTextFinal.slice(0,22)}${cleanTextFinal.length>22?'...':''}`);
-  saveState();
-  console.log('[Raymond Phone] Added group message:', { groupName, fromRaw, text: cleanTextFinal?.slice(0, 20), imgCount: imgs.length });
+  if (msgItems.length > 0) {
+    msgItems.forEach(msgObj => thread.messages.push(msgObj));
+    thread.unread = (thread.unread || 0) + 1;
+    refreshBadges(); renderThreadList();
+    if (STATE.currentThread === groupId) renderBubbles(groupId);
+    showBanner(groupName, `${fromRaw}:${cleanTextFinal?.slice(0,22) || '[图片]'}${cleanTextFinal?.length>22?'...':''}`);
+    saveState();
+    console.log('[Raymond Phone] Added group message:', { groupName, fromRaw, text: cleanTextFinal?.slice(0, 20), imgCount: imgs.length });
+  }
 }
 
 // Incoming group voice (placeholder)
