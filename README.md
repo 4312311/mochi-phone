@@ -80,7 +80,6 @@ mochi-phone/
 │   │   ├── index.js      # CSS主入口
 │   │   ├── css.js        # 原始CSS（已弃用，保留备份）
 │   │   ├── README.md     # CSS模块化文档
-│   │   ├── BUILD_GUIDE.md # 构建指南
 │   │   └── modules/      # CSS模块（从 css.js 拆分）
 │   │       ├── base.css      # 基础样式
 │   │       ├── common.css    # 公共组件
@@ -218,7 +217,42 @@ function playVoice(threadId, voiceId) {
 window.playVoice = playVoice;
 ```
 
-### 5. 消息清理安全机制
+### 5. 消息顺序排序（源码顺序）
+
+SMS 和 VOICE 消息分开解析，先解析的全部 SMS 添加到线程，后解析的全部 VOICE 添加到线程，导致顺序错乱。
+
+**解决方案**：使用队列模式，按源码位置排序后再添加到线程。
+
+```javascript
+// 收集待排序消息：记录原始位置用于按源码顺序排序
+const _pendingMessages = []; // { threadId, msgObj, index: 源码中位置 }
+
+function _queueMessage(threadId, msgObj, sourceIndex) {
+  _pendingMessages.push({ threadId, msgObj, index: sourceIndex });
+}
+
+function _flushMessages() {
+  if (_pendingMessages.length === 0) return 0;
+  // 按线程分组，每组内按源码位置排序
+  const byThread = {};
+  _pendingMessages.forEach(({ threadId, msgObj, index }) => {
+    byThread[threadId] = byThread[threadId] || [];
+    byThread[threadId].push({ msgObj, index });
+  });
+  // 添加到各线程
+  Object.entries(byThread).forEach(([threadId, items]) => {
+    items.sort((a, b) => a.index - b.index); // 按源码位置排序
+    items.forEach(({ msgObj }) => th.messages.push(msgObj));
+  });
+}
+```
+
+**使用方式**：
+- 解析 SMS 时，记录匹配位置 `sourceIndex = smsTagRe.lastIndex - m[0].length`
+- 解析 VOICE 时，记录匹配位置 `sourceIndex = voiceRe.lastIndex - m[0].length`
+- 解析完成后调用 `_flushMessages()` 统一添加
+
+### 6. 消息清理安全机制
 
 **关键**: 防止 `messageId` 无效时误删所有消息！采用双重防护：
 
@@ -253,12 +287,12 @@ const messageId = String(messageIdx);
 
 注意：`lastAI.message_id` 和 `lastAI.id` 在新版 SillyTavern 中都是 `undefined`，因此使用消息数组索引作为唯一标识。
 
-### 6. 事件监听机制
+### 7. 事件监听机制
 
 **监听的 SillyTavern 事件**:
 - `GENERATION_ENDED` - AI 消息生成完成
 - `MESSAGE_SWIPED` - 消息被滑动查看
-- `MESSAGE_DELETED` - 删除单条消息
+- `MESSAGE_DELETED` - 删除单条消息（支持批量删除）
 - `MESSAGE_SWIPE_DELETED` - 滑动删除消息
 - `CHAT_CHANGED` - 切换聊天
 - `CHAT_DELETED` - 删除整个聊天
@@ -266,8 +300,14 @@ const messageId = String(messageIdx);
 **消息重新生成处理**:
 - 通过指纹 `_lastAiFingerprint` 检测是否是同一 chatId 的新消息
 - 如果是，调用 `cleanupOldMessages(oldMessageId)` 清理旧的手机消息
+- 清理完成后解析新的手机消息
 
-### 7. AI 响应解析格式
+**eventSource 获取方式**:
+- 使用 `getEventSource()` 函数统一获取，支持动态导入
+- 先尝试 `window.eventSource` / `window.SillyTavern?.eventSource`
+- 失败则动态 import `../../../../script.js` 获取
+
+### 8. AI 响应解析格式
 
 监听 `<PHONE>` 标签，支持以下指令:
 - `[SMS:内容]` - 发送短信

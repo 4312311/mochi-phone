@@ -586,14 +586,29 @@ function parsePhone(block, messageId) {
     if (_isUserFrom(voiceFrom)) { console.log('[Phone:guard] VOICE FROM=user blocked:', voiceFrom); continue; }
     const sourceIndex = voiceRe.lastIndex - m[0].length;
     const thread = findOrCreateThread(voiceFrom);
+    const msgTime = m[2].trim();
+    const voiceText = m[4].trim();
+    
+    // 去重：优先用 messageId，否则用 text+time 组合判断
+    let isDup = false;
+    if (messageId) {
+      isDup = thread.messages.some(msg => msg.messageId === messageId && msg.type === 'voice' && msg.text === voiceText);
+    } else {
+      isDup = thread.messages.some(msg => msg.type === 'voice' && msg.text === voiceText && msg.time === msgTime);
+    }
+    if (isDup) {
+      console.log('[Raymond Phone] Skip duplicate VOICE:', { threadId: thread.id, text: voiceText.slice(0, 20), messageId });
+      continue;
+    }
+    
     const msgObj = {
       id: `vc_${Date.now()}`,
       from: 'incoming',
       type: 'voice',
       name: voiceFrom,
-      time: m[2].trim(),
+      time: msgTime,
       duration: m[3].trim(),
-      text: m[4].trim(),
+      text: voiceText,
       played: false
     };
     if (messageId) msgObj.messageId = messageId;
@@ -1863,5 +1878,6 @@ export {
   cleanInvalidContacts,
   getAvatar,
   setAvatar,
-  getSTATE
+  getSTATE,
+  saveState
 };

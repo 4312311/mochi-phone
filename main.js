@@ -41,7 +41,8 @@ import {
   autoAddCharContact,
   cleanInvalidContacts,
   getAvatar,
-  setAvatar
+  setAvatar,
+  saveState
 } from './src/modules/messages.js';
 
 // 4. 导入主题模块
@@ -390,6 +391,7 @@ async function init() {
 // 导出navigateTo供其他模块使用
 window.navigateTo = navigateTo;
 window.renderMoments = renderMoments;
+window.__saveState = saveState;
 
 // 监听角色切换事件
 function setupCharacterSwitchListener() {

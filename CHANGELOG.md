@@ -1,5 +1,23 @@
 # 更新日志
 
+## 2026-04-06
+
+### 消息顺序排序修复
+- ✅ 修复 SMS 和 VOICE 消息顺序错乱问题
+- ✅ 添加队列模式，按源码位置排序后再添加到线程
+- ✅ 使用 `sourceIndex` 记录每条消息在原始文本中的位置
+
+### 删除事件监听修复
+- ✅ 修复 `setupMessageDeleteListeners()` 无法获取 eventSource 的问题
+- ✅ 改用 `await getEventSource()` 异步获取（与 setupAIResponseListener 一致）
+- ✅ 支持批量删除消息（MESSAGE_DELETED 事件）
+
+### 文档更新
+- ✅ 更新 README.md 添加"消息顺序排序"核心逻辑说明
+- ✅ 更新章节编号（5→消息顺序排序, 6→消息清理, 7→事件监听, 8→AI解析格式）
+
+---
+
 ## 2026-04-03
 
 ### CSS 模块化重构
