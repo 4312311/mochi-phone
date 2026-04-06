@@ -533,33 +533,65 @@ function parsePhone(block, messageId) {
           return;
         }
 
-        // 构建消息列表：图片在前，文本在后（保持顺序）
+        // 构建消息列表：按照在SMS标签内出现的实际顺序排列
         const msgItems = [];
 
-        // 图片消息
-        smsImgs.forEach((src, idx) => {
-          const isDup = th.messages.some(msg => msg.type === 'image' && msg.src === src);
+        // 解析原始内容，按照图片和文本的实际顺序添加消息
+        const rawContent = match[2] || '';
+        let lastIndex = 0;
+        
+        // 查找所有图片标签
+        const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\s*\/>/gi;
+        let imgMatch;
+        
+        while ((imgMatch = imgRe.exec(rawContent)) !== null) {
+          // 添加图片前的文本
+          const textBeforeImg = rawContent.substring(lastIndex, imgMatch.index).trim();
+          if (textBeforeImg) {
+            const cleanText = sanitizeSmsText(textBeforeImg);
+            let isDup = false;
+            if (messageId) {
+              isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === cleanText && msg.time === msgTime);
+            } else {
+              isDup = th.messages.some(msg => msg.text === cleanText && msg.time === msgTime);
+            }
+            if (!isDup) {
+              const msgObj = { from: threadId, text: cleanText, time: msgTime };
+              if (messageId) msgObj.messageId = messageId;
+              msgItems.push(msgObj);
+            }
+          }
+          
+          // 添加图片
+          const src = imgMatch[1];
+          let isDup = false;
+          if (messageId) {
+            isDup = th.messages.some(msg => msg.messageId === messageId && msg.type === 'image' && msg.src === src);
+          } else {
+            isDup = th.messages.some(msg => msg.type === 'image' && msg.src === src);
+          }
           if (!isDup) {
-            const msgObj = { id: `aimg_${Date.now()}_${idx}`, from: threadId, type: 'image', time: msgTime, src };
+            const msgObj = { id: `aimg_${Date.now()}_${msgItems.length}`, from: threadId, type: 'image', time: msgTime, src };
             if (messageId) msgObj.messageId = messageId;
             msgItems.push(msgObj);
             console.log(`[Raymond Phone] Added image to batch:`, src.slice(0, 50));
           }
-        });
-
-        // 文本消息
-        if (text && text.trim()) {
-          // 去重：使用更精确的判断，避免误判重复
+          
+          lastIndex = imgRe.lastIndex;
+        }
+        
+        // 添加最后一张图片后的文本
+        const textAfterImgs = rawContent.substring(lastIndex).trim();
+        if (textAfterImgs) {
+          const cleanText = sanitizeSmsText(textAfterImgs);
           let isDup = false;
           if (messageId) {
-            isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text && msg.time === msgTime);
+            isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === cleanText && msg.time === msgTime);
           } else {
-            isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
+            isDup = th.messages.some(msg => msg.text === cleanText && msg.time === msgTime);
           }
-          if (isDup) {
-            console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20), messageId, time: msgTime });
-          } else {
-            const msgObj = { from: threadId, text, time: msgTime };
+          if (!isDup) {
+            const msgObj = { from: threadId, text: cleanText, time: msgTime };
             if (messageId) msgObj.messageId = messageId;
             msgItems.push(msgObj);
           }
@@ -693,8 +725,12 @@ function parsePhone(block, messageId) {
         
         const groupName = match[2].trim();
         const msgTime = match[3].trim();
-        const text = match[4].trim();
+        const rawContent = match[4].trim();
         const groupId = `grp_${groupName}`;
+        
+        // 提取图片和清理文本
+        const { imgs: gmsgImgs, cleanText: gmsgCleanText } = extractImgsFromText(rawContent);
+        const text = sanitizeSmsText(gmsgCleanText);
         
         // 创建群聊线程
         if (!STATE.threads[groupId]) {
@@ -710,29 +746,96 @@ function parsePhone(block, messageId) {
         const grpThread = STATE.threads[groupId];
         const senderTh = findOrCreateThread(gmsgFrom);
         
-        // 去重：使用 text+time 组合判断
-        const isDup = grpThread.messages.some(msg => msg.type === 'group_msg' && msg.name === gmsgFrom && msg.text === text && msg.time === msgTime);
-        if (isDup) {
-          console.log('[Raymond Phone] Skip duplicate GMSG:', gmsgFrom, text.slice(0, 20));
-          return;
+        // 构建消息列表：按照在GMSG标签内出现的实际顺序排列
+        const msgItems = [];
+        
+        // 解析原始内容，按照图片和文本的实际顺序添加消息
+        const rawContent = match[4] || '';
+        let lastIndex = 0;
+        
+        // 查找所有图片标签
+        const imgRe = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["'][^>]*\s*\/>/gi;
+        let imgMatch;
+        
+        while ((imgMatch = imgRe.exec(rawContent)) !== null) {
+          // 添加图片前的文本
+          const textBeforeImg = rawContent.substring(lastIndex, imgMatch.index).trim();
+          if (textBeforeImg) {
+            const cleanText = sanitizeSmsText(textBeforeImg);
+            const isDup = grpThread.messages.some(msg => msg.type === 'group_msg' && msg.name === gmsgFrom && msg.text === cleanText && msg.time === msgTime);
+            if (!isDup) {
+              const msgObj = {
+                id: `gg_${Date.now()}_${msgItems.length}`,
+                from: 'incoming',
+                type: 'group_msg',
+                name: gmsgFrom,
+                time: msgTime,
+                text: cleanText,
+                initials: senderTh.initials,
+                avatarBg: senderTh.avatarBg
+              };
+              if (messageId) msgObj.messageId = messageId;
+              msgItems.push(msgObj);
+            }
+          }
+          
+          // 添加图片
+          const src = imgMatch[1];
+          let isDup = false;
+          if (messageId) {
+            isDup = grpThread.messages.some(msg => msg.messageId === messageId && msg.type === 'group_image' && msg.src === src);
+          } else {
+            isDup = grpThread.messages.some(msg => msg.type === 'group_image' && msg.src === src);
+          }
+          if (!isDup) {
+            const msgObj = {
+              id: `gimg_${Date.now()}_${msgItems.length}`,
+              from: 'incoming',
+              type: 'group_image',
+              name: gmsgFrom,
+              time: msgTime,
+              src: src,
+              initials: senderTh.initials,
+              avatarBg: senderTh.avatarBg
+            };
+            if (messageId) msgObj.messageId = messageId;
+            msgItems.push(msgObj);
+            console.log(`[Raymond Phone] Added group image to batch:`, src.slice(0, 50));
+          }
+          
+          lastIndex = imgRe.lastIndex;
         }
         
-        const msgObj = {
-          id: `gg_${Date.now()}`,
-          from: 'incoming',
-          type: 'group_msg',
-          name: gmsgFrom,
-          time: msgTime,
-          text: text,
-          initials: senderTh.initials,
-          avatarBg: senderTh.avatarBg
-        };
-        if (messageId) msgObj.messageId = messageId;
+        // 添加最后一张图片后的文本
+        const textAfterImgs = rawContent.substring(lastIndex).trim();
+        if (textAfterImgs) {
+          const cleanText = sanitizeSmsText(textAfterImgs);
+          const isDup = grpThread.messages.some(msg => msg.type === 'group_msg' && msg.name === gmsgFrom && msg.text === cleanText && msg.time === msgTime);
+          if (!isDup) {
+            const msgObj = {
+              id: `gg_${Date.now()}_${msgItems.length}`,
+              from: 'incoming',
+              type: 'group_msg',
+              name: gmsgFrom,
+              time: msgTime,
+              text: cleanText,
+              initials: senderTh.initials,
+              avatarBg: senderTh.avatarBg
+            };
+            if (messageId) msgObj.messageId = messageId;
+            msgItems.push(msgObj);
+          }
+        }
         
-        // 使用队列模式，按源码顺序排序
-        const sourceIndex = match.index;
-        _queueMessage(groupId, msgObj, sourceIndex);
-        parsedCount++;
+        // 批量添加消息（队列模式，按源码顺序排序）
+        if (msgItems.length > 0) {
+          const sourceIndex = match.index; // 记录源码位置
+          msgItems.forEach((msgObj, idx) => {
+            // 使用递增的源码位置，确保同一GMSG标签内的消息按添加顺序排列
+            _queueMessage(groupId, msgObj, sourceIndex + idx * 0.1);
+          });
+          parsedCount += msgItems.length;
+        }
         break;
       }
       
@@ -974,22 +1077,20 @@ function cleanupOldPhoneMessages(messageId) {
 
   let cleanedCount = 0;
 
-  // 只有提供了有效的 messageId，才只删除该楼层对应的消息
-  Object.keys(STATE.threads).forEach(threadId => {
-    const thread = STATE.threads[threadId];
-    if (thread && thread.messages) {
-      const oldLength = thread.messages.length;
+  // 只清理当前线程的消息，避免误删其他角色的回复
+  if (STATE.currentThread && STATE.threads[STATE.currentThread]) {
+    const thread = STATE.threads[STATE.currentThread];
+    const oldLength = thread.messages.length;
 
-      // 只删除带有指定 messageId 的消息
-      thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
+    // 只删除带有指定 messageId 的消息
+    thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
 
-      const newLength = thread.messages.length;
-      cleanedCount += (oldLength - newLength);
-      if (oldLength - newLength > 0) {
-        console.log('[Raymond Phone] Cleared thread:', threadId, 'removed', oldLength - newLength, 'messages');
-      }
+    const newLength = thread.messages.length;
+    cleanedCount = oldLength - newLength;
+    if (cleanedCount > 0) {
+      console.log('[Raymond Phone] Cleared current thread:', STATE.currentThread, 'removed', cleanedCount, 'messages');
     }
-  });
+  }
 
   console.log('[Raymond Phone] Cleanup complete, removed', cleanedCount, 'messages total');
 
@@ -1476,6 +1577,21 @@ function renderBubbles(threadId) {
       const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble"><img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/></div>`);
       const time = $(`<div class="rp-bts">${msg.time}</div>`);
       wrap.append(bubble, time);
+      area.append(wrap);
+      return;
+    }
+    // ── 群聊图片消息 ──
+    if (msg.type === 'group_image') {
+      const customImg = STATE.avatars && STATE.avatars[msg.name];
+      const avEl = customImg
+        ? $(`<div class="rp-grp-av rp-av-img"><img class="rp-av-photo" src="${customImg}" alt=""/></div>`)
+        : $(`<div class="rp-grp-av" style="background:${msg.avatarBg}">${msg.initials}</div>`);
+      const wrap = $('<div class="rp-bwrap rp-in rp-grp"></div>');
+      const inner = $('<div>');
+      inner.append($('<div>').addClass('rp-grp-sender').text(msg.name));
+      inner.append($(`<div class="rp-bubble rp-recv rp-img-bubble"><img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/></div>`));
+      inner.append($('<div>').addClass('rp-bts').text(msg.time));
+      wrap.append(avEl, inner);
       area.append(wrap);
       return;
     }
