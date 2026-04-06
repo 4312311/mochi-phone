@@ -785,7 +785,10 @@ function startMessageChangeMonitor(chatId, originalPhoneContent, originalMessage
 
       if (shouldCleanup) {
         console.log('[Raymond Phone] Message appears to be regenerated, cleaning up old messages for messageId:', messageId);
-        cleanupOldMessages(messageId);
+        // 只有当PHONE块被移除时才清理消息，避免误删
+        if (!currentHasPhone && lastHasPhone) {
+          cleanupOldMessages(messageId);
+        }
         // 重置解析哈希，让新消息能被解析
         window._lastPhoneBlockHash = null;
       } else {

@@ -384,6 +384,12 @@ function parsePhone(block, messageId) {
       if (!th) return;
       // 按源码位置排序
       items.sort((a, b) => a.index - b.index);
+      console.log('[Raymond Phone] Message order for thread', threadId, ':', items.map(item => {
+        if (item.msgObj.type === 'image') return 'IMAGE';
+        if (item.msgObj.type === 'voice') return 'VOICE';
+        if (item.msgObj.type === 'hongbao') return 'HONGBAO';
+        return 'SMS';
+      }));
       items.forEach(({ msgObj }) => {
         th.messages.push(msgObj);
         added++;
@@ -543,15 +549,15 @@ function parsePhone(block, messageId) {
 
         // 文本消息
         if (text && text.trim()) {
-          // 去重：优先用 messageId，否则用 text+time 组合判断
+          // 去重：使用更精确的判断，避免误判重复
           let isDup = false;
           if (messageId) {
-            isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text);
+            isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text && msg.time === msgTime);
           } else {
             isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
           }
           if (isDup) {
-            console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20), messageId });
+            console.log('[Raymond Phone] Skip duplicate SMS:', { threadId, text: text.slice(0, 20), messageId, time: msgTime });
           } else {
             const msgObj = { from: threadId, text, time: msgTime };
             if (messageId) msgObj.messageId = messageId;
@@ -563,7 +569,8 @@ function parsePhone(block, messageId) {
         if (msgItems.length > 0) {
           const sourceIndex = match.index; // 记录源码位置
           msgItems.forEach((msgObj, idx) => {
-            // 使用相同的源码位置，确保同一SMS标签内的消息按添加顺序排列
+            // 使用递增的源码位置，确保同一SMS标签内的消息按添加顺序排列
+            // 同时保证不同SMS标签间的消息也按正确顺序排列
             _queueMessage(threadId, msgObj, sourceIndex + idx * 0.1);
           });
           parsedCount += msgItems.length;
@@ -612,7 +619,34 @@ function parsePhone(block, messageId) {
         const _userName = (typeof getContext === 'function' ? getContext()?.name1 : null) || '';
         // 跳过 user 自己发出的红包(AI 确认回显),只处理 char 发来的
         if (_userName && fromName.toLowerCase() === _userName.toLowerCase()) return;
-        incomingHongbao(fromName, match[2].trim(), match[3] ? match[3].trim() : '恭喜发财');
+        
+        const thread = findOrCreateThread(fromName);
+        const msgTime = '12:00'; // 红包消息没有时间，使用默认时间
+        const amount = match[2].trim();
+        const note = match[3] ? match[3].trim() : '恭喜发财';
+        
+        // 去重：使用 amount+note 组合判断
+        const isDup = thread.messages.some(msg => msg.type === 'hongbao' && msg.amount === amount && msg.note === note);
+        if (isDup) {
+          console.log('[Raymond Phone] Skip duplicate HONGBAO:', { threadId: thread.id, amount, note });
+          return;
+        }
+        
+        const msgObj = {
+          id: `hb_${Date.now()}`,
+          from: thread.id,
+          type: 'hongbao',
+          name: fromName,
+          time: msgTime,
+          amount,
+          note,
+          opened: false
+        };
+        if (messageId) msgObj.messageId = messageId;
+        
+        // 使用队列模式，按源码顺序排序
+        const sourceIndex = match.index;
+        _queueMessage(thread.id, msgObj, sourceIndex);
         parsedCount++;
         break;
       }
@@ -656,7 +690,48 @@ function parsePhone(block, messageId) {
       case 'GMSG': {
         const gmsgFrom = match[1].trim();
         if (_isUserFrom(gmsgFrom)) { console.log('[Phone:guard] GMSG FROM=user blocked:', gmsgFrom); return; }
-        incomingGroupMsg(gmsgFrom, match[2].trim(), match[3].trim(), match[4].trim());
+        
+        const groupName = match[2].trim();
+        const msgTime = match[3].trim();
+        const text = match[4].trim();
+        const groupId = `grp_${groupName}`;
+        
+        // 创建群聊线程
+        if (!STATE.threads[groupId]) {
+          const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
+          STATE.threads[groupId] = {
+            id: groupId, name: groupName,
+            initials: groupName.slice(0, 2),
+            avatarBg: `linear-gradient(145deg,${GROUP_COLORS[colorIdx]},${GROUP_COLORS[(colorIdx+1)%GROUP_COLORS.length]})`,
+            type: 'group', messages: [], unread: 0
+          };
+        }
+        
+        const grpThread = STATE.threads[groupId];
+        const senderTh = findOrCreateThread(gmsgFrom);
+        
+        // 去重：使用 text+time 组合判断
+        const isDup = grpThread.messages.some(msg => msg.type === 'group_msg' && msg.name === gmsgFrom && msg.text === text && msg.time === msgTime);
+        if (isDup) {
+          console.log('[Raymond Phone] Skip duplicate GMSG:', gmsgFrom, text.slice(0, 20));
+          return;
+        }
+        
+        const msgObj = {
+          id: `gg_${Date.now()}`,
+          from: 'incoming',
+          type: 'group_msg',
+          name: gmsgFrom,
+          time: msgTime,
+          text: text,
+          initials: senderTh.initials,
+          avatarBg: senderTh.avatarBg
+        };
+        if (messageId) msgObj.messageId = messageId;
+        
+        // 使用队列模式，按源码顺序排序
+        const sourceIndex = match.index;
+        _queueMessage(groupId, msgObj, sourceIndex);
         parsedCount++;
         break;
       }
@@ -667,6 +742,8 @@ function parsePhone(block, messageId) {
         if (_isUserFrom(fromRaw)) { console.log('[Phone:guard] GVOICE FROM=user blocked:', fromRaw); return; }
         const duration = match[4].trim(), voiceText = match[5].trim();
         const groupId = `grp_${groupName}`;
+        
+        // 创建群聊线程
         if (!STATE.threads[groupId]) {
           const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
           STATE.threads[groupId] = {
@@ -676,22 +753,34 @@ function parsePhone(block, messageId) {
             type: 'group', messages: [], unread: 0
           };
         }
+        
         const grpThread = STATE.threads[groupId];
-        // 去重：用 text 而非 voiceText
-        const isDupGV = grpThread.messages.some(msg => msg.type === 'group_voice' && msg.name === fromRaw && msg.text === voiceText);
-        if (!isDupGV) {
-          const senderTh = findOrCreateThread(fromRaw);
-          grpThread.messages.push({
-            id: `ggv_${Date.now()}`, from: 'incoming',
-            type: 'group_voice', name: fromRaw, time, duration, text: voiceText,
-            initials: senderTh.initials, avatarBg: senderTh.avatarBg
-          });
-          grpThread.unread = (grpThread.unread || 0) + 1;
-          refreshBadges(); renderThreadList();
-          if (STATE.currentThread === groupId) renderBubbles(groupId);
-          showBanner(groupName, `${fromRaw}: 🎤 [${duration}]`);
+        const senderTh = findOrCreateThread(fromRaw);
+        
+        // 去重：使用 text+time 组合判断
+        const isDup = grpThread.messages.some(msg => msg.type === 'group_voice' && msg.name === fromRaw && msg.text === voiceText && msg.time === time);
+        if (isDup) {
+          console.log('[Raymond Phone] Skip duplicate GVOICE:', fromRaw, voiceText.slice(0, 20));
+          return;
         }
-        saveState();
+        
+        const msgObj = {
+          id: `ggv_${Date.now()}`,
+          from: 'incoming',
+          type: 'group_voice',
+          name: fromRaw,
+          time: time,
+          duration: duration,
+          text: voiceText,
+          played: false,
+          initials: senderTh.initials,
+          avatarBg: senderTh.avatarBg
+        };
+        if (messageId) msgObj.messageId = messageId;
+        
+        // 使用队列模式，按源码顺序排序
+        const sourceIndex = match.index;
+        _queueMessage(groupId, msgObj, sourceIndex);
         parsedCount++;
         break;
       }
@@ -700,6 +789,8 @@ function parsePhone(block, messageId) {
         const fromRaw = match[1].trim(), groupName = match[2].trim();
         const amount = match[3].trim(), note = match[4] ? match[4].trim() : '恭喜发财';
         const groupId = `grp_${groupName}`;
+        
+        // 创建群聊线程
         if (!STATE.threads[groupId]) {
           const colorIdx = Object.keys(STATE.threads).length % GROUP_COLORS.length;
           STATE.threads[groupId] = {
@@ -709,25 +800,35 @@ function parsePhone(block, messageId) {
             type: 'group', messages: [], unread: 0
           };
         }
+        
         const grpThread = STATE.threads[groupId];
-        const isDupGH = grpThread.messages.some(msg => msg.type === 'group_hongbao' && msg.name === fromRaw && msg.amount === amount);
-        if (!isDupGH) {
-          const senderTh = findOrCreateThread(fromRaw);
-          grpThread.messages.push({
-            id: `ggh_${Date.now()}`, from: 'incoming',
-            type: 'group_hongbao', name: fromRaw, time: (() => {
-              const now = new Date();
-              return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-            })(),
-            amount, note, opened: false,
-            initials: senderTh.initials, avatarBg: senderTh.avatarBg
-          });
-          grpThread.unread = (grpThread.unread || 0) + 1;
-          refreshBadges(); renderThreadList();
-          if (STATE.currentThread === groupId) renderBubbles(groupId);
-          showBanner(groupName, `${fromRaw}: 🧧 ${amount}`);
+        const senderTh = findOrCreateThread(fromRaw);
+        const msgTime = '12:00'; // 红包消息没有时间，使用默认时间
+        
+        // 去重：使用 amount+note 组合判断
+        const isDup = grpThread.messages.some(msg => msg.type === 'group_hongbao' && msg.name === fromRaw && msg.amount === amount && msg.note === note);
+        if (isDup) {
+          console.log('[Raymond Phone] Skip duplicate GHONGBAO:', fromRaw, amount, note);
+          return;
         }
-        saveState();
+        
+        const msgObj = {
+          id: `ggh_${Date.now()}`,
+          from: 'incoming',
+          type: 'group_hongbao',
+          name: fromRaw,
+          time: msgTime,
+          amount: amount,
+          note: note,
+          opened: false,
+          initials: senderTh.initials,
+          avatarBg: senderTh.avatarBg
+        };
+        if (messageId) msgObj.messageId = messageId;
+        
+        // 使用队列模式，按源码顺序排序
+        const sourceIndex = match.index;
+        _queueMessage(groupId, msgObj, sourceIndex);
         parsedCount++;
         break;
       }
