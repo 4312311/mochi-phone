@@ -1056,9 +1056,9 @@ function sendSMS() {
     $('#rp-input').val('');
   }
 
-  if (!STATE.currentThreadId || !STATE.pendingMessages || STATE.pendingMessages.length === 0) return;
+  if (!STATE.currentThread || !STATE.pendingMessages || STATE.pendingMessages.length === 0) return;
 
-  const th = STATE.threads[STATE.currentThreadId];
+  const th = STATE.threads[STATE.currentThread];
   const now = new Date();
   const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
@@ -1070,7 +1070,7 @@ function sendSMS() {
   allMessages.forEach(text => {
     th.messages.push({ from: 'user', text, time: ts });
   });
-  renderBubbles(STATE.currentThreadId);
+  renderBubbles(STATE.currentThread);
   updatePreviews();
   saveState();
 
@@ -1355,7 +1355,7 @@ function renderBubbles(threadId) {
 
 // Open thread
 function openThread(threadId) {
-  STATE.currentThreadId = threadId;
+  STATE.currentThread = threadId;
   const th = STATE.threads[threadId];
   if (!th) return;
 
@@ -1647,10 +1647,10 @@ function initSMS() {
     const text = $input.val().trim();
     if (!text) return;
 
-    const currentThreadId = getSTATE().currentThreadId;
-    const currentThread = STATE.threads[currentThreadId];
-    if (currentThread) {
-      sendSMS(currentThreadId, text);
+    const currentThread = getSTATE().currentThread;
+    const thread = STATE.threads[currentThread];
+    if (thread) {
+      sendSMS();
       $input.val('');
     }
   });
@@ -1662,10 +1662,10 @@ function initSMS() {
       const text = $input.val().trim();
       if (!text) return;
 
-      const currentThreadId = getSTATE().currentThreadId;
-      const currentThread = STATE.threads[currentThreadId];
-      if (currentThread) {
-        sendSMS(currentThreadId, text);
+      const currentThread = getSTATE().currentThread;
+      const thread = STATE.threads[currentThread];
+      if (thread) {
+        sendSMS();
         $input.val('');
       }
     }
