@@ -348,19 +348,13 @@ function extractImgsFromText(raw) {
 }
 
 function parsePhone(block, messageId) {
-  console.log('[Raymond Phone] ========== START PARSING ==========');
-  console.log('[Raymond Phone] Input block type:', typeof block);
-  console.log('[Raymond Phone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
-  // 只打印PHONE标签中的内容，不打印所有内容
-  if (typeof block === 'string') {
-    const phoneMatch = block.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
-    if (phoneMatch) {
-      console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
-    } else {
-      console.log('[Raymond Phone] Full PHONE block content:', block);
-    }
+  // 只在开发模式下打印详细日志
+  const isDevMode = true; // 可以根据需要设置为 false
+  if (isDevMode) {
+    console.log('[Raymond Phone] ========== START PARSING ==========');
+    console.log('[Raymond Phone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
+    console.log('[Raymond Phone] parsePhone messageId:', messageId);
   }
-  console.log('[Raymond Phone] parsePhone messageId:', messageId);
 
   let parsedCount = 0;
   let m;
@@ -371,31 +365,60 @@ function parsePhone(block, messageId) {
     _pendingMessages.push({ threadId, msgObj, index: sourceIndex });
   }
   function _flushMessages() {
-    if (_pendingMessages.length === 0) return 0;
+    // 只在开发模式下打印详细日志
+    const isDevMode = true; // 可以根据需要设置为 false
+    if (isDevMode) {
+      console.log('[Raymond Phone] ========== START FLUSHING MESSAGES ==========');
+      console.log('[Raymond Phone] Pending messages count:', _pendingMessages.length);
+    }
+    
+    if (_pendingMessages.length === 0) {
+      if (isDevMode) {
+        console.log('[Raymond Phone] No pending messages to flush');
+      }
+      return 0;
+    }
+    
     // 按线程分组，每组内按源码位置排序（保持 AI 输出的原始顺序）
     const byThread = {};
     _pendingMessages.forEach(({ threadId, msgObj, index }) => {
       byThread[threadId] = byThread[threadId] || [];
       byThread[threadId].push({ msgObj, index });
     });
+    
     let added = 0;
     Object.entries(byThread).forEach(([threadId, items]) => {
+      if (isDevMode) {
+        console.log('[Raymond Phone] Processing thread:', threadId, 'with', items.length, 'items');
+      }
       const th = STATE.threads[threadId];
-      if (!th) return;
+      if (!th) {
+        if (isDevMode) {
+          console.log('[Raymond Phone] Thread not found:', threadId);
+        }
+        return;
+      }
+      
       // 按源码位置排序
       items.sort((a, b) => a.index - b.index);
-      console.log('[Raymond Phone img fix] Message order for thread', threadId, ':', items.map(item => {
-        if (item.msgObj.type === 'image') return 'IMAGE';
-        if (item.msgObj.type === 'group_image') return 'GROUP_IMAGE';
-        if (item.msgObj.type === 'voice') return 'VOICE';
-        if (item.msgObj.type === 'group_voice') return 'GROUP_VOICE';
-        if (item.msgObj.type === 'hongbao') return 'HONGBAO';
-        if (item.msgObj.type === 'group_hongbao') return 'GROUP_HONGBAO';
-        return 'SMS';
-      }));
+      if (isDevMode) {
+        console.log('[Raymond Phone] Message order for thread', threadId, ':', items.map(item => {
+          if (item.msgObj.type === 'image') return 'IMAGE';
+          if (item.msgObj.type === 'group_image') return 'GROUP_IMAGE';
+          if (item.msgObj.type === 'voice') return 'VOICE';
+          if (item.msgObj.type === 'group_voice') return 'GROUP_VOICE';
+          if (item.msgObj.type === 'hongbao') return 'HONGBAO';
+          if (item.msgObj.type === 'group_hongbao') return 'GROUP_HONGBAO';
+          return 'SMS';
+        }));
+      }
       
       // 清空线程的消息数组，只保留没有messageId的消息（用户发送的消息）
+      const oldMessagesCount = th.messages.length;
       th.messages = th.messages.filter(msg => !msg.messageId);
+      if (isDevMode) {
+        console.log('[Raymond Phone] Cleared', oldMessagesCount - th.messages.length, 'messages from thread', threadId);
+      }
       
       // 添加新消息
       items.forEach(({ msgObj }) => {
@@ -404,10 +427,22 @@ function parsePhone(block, messageId) {
       });
       
       if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread += items.length;
-      if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
-      refreshBadges(); updatePreviews();
+      if (STATE.currentView === 'thread' && STATE.currentThread === threadId) {
+        if (isDevMode) {
+          console.log('[Raymond Phone] Rendering bubbles for thread:', threadId);
+        }
+        renderBubbles(threadId);
+      }
+      
+      refreshBadges(); 
+      updatePreviews();
     });
+    
     _pendingMessages.length = 0;
+    if (isDevMode) {
+      console.log('[Raymond Phone] ========== FLUSHING COMPLETE ==========');
+      console.log('[Raymond Phone] Added', added, 'messages total');
+    }
     return added;
   }
 
@@ -479,12 +514,21 @@ function parsePhone(block, messageId) {
   allTags.sort((a, b) => a.index - b.index);
   
   // 处理排序后的标签
-  allTags.forEach(({ name, match }) => {
+  const isDevMode = true; // 可以根据需要设置为 false
+  if (isDevMode) {
+    console.log('[Raymond Phone] Total tags found:', allTags.length);
+  }
+  allTags.forEach(({ name, match }, index) => {
+    if (isDevMode) {
+      console.log('[Raymond Phone] Processing tag', index + 1, 'of', allTags.length, ':', name, 'at index', match.index);
+    }
     switch (name) {
       case 'SMS': {
         const attrs = getTagAttrs(match[1]);
         const fromRaw0 = (attrs.FROM || '').trim();
-        console.log('[parsePhone] Found SMS tag:', { from: fromRaw0, attrs, contentPreview: match[2].substring(0, 50) });
+        if (isDevMode) {
+          console.log('[parsePhone] Found SMS tag:', { from: fromRaw0, contentPreview: match[2].substring(0, 50) });
+        }
 
         // 严禁 AI 替 user 发言：FROM 是 user 名字时直接跳过
         if (_isUserFrom(fromRaw0)) { console.log('[Phone:guard] SMS FROM=user blocked:', fromRaw0); return; }
@@ -493,7 +537,9 @@ function parsePhone(block, messageId) {
 
         // 先从 SMS 内容里提取图片（生图插件替换后的 <img src>）和智绘姬 pending prompts
         const { imgs: smsImgs, cleanText: smsCleanText, pendingPrompts: smsPendingPrompts } = extractImgsFromText(rawContent);
-        console.log('[parsePhone] Extracted from SMS:', { imgsCount: smsImgs.length, imgs: smsImgs, textLength: smsCleanText.length });
+        if (isDevMode) {
+          console.log('[parsePhone] Extracted from SMS:', { imgsCount: smsImgs.length, textLength: smsCleanText.length });
+        }
         const text = sanitizeSmsText(smsCleanText);
 
         // 线程路由策略:
@@ -604,6 +650,22 @@ function parsePhone(block, messageId) {
             msgItems.push(msgObj);
           }
         }
+        
+        // 处理纯文本短信（没有图片的情况）
+        if (msgItems.length === 0 && text) {
+          let isDup = false;
+          if (messageId) {
+            isDup = th.messages.some(msg => msg.messageId === messageId && msg.text === text && msg.time === msgTime);
+          } else {
+            isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
+          }
+          if (!isDup) {
+            const msgObj = { from: threadId, text: text, time: msgTime };
+            if (messageId) msgObj.messageId = messageId;
+            msgItems.push(msgObj);
+            console.log(`[Raymond Phone] Added text message to batch:`, text.slice(0, 50));
+          }
+        }
 
         // 批量添加消息（队列模式，按源码顺序排序）
         if (msgItems.length > 0) {
@@ -612,10 +674,14 @@ function parsePhone(block, messageId) {
             // 使用递增的源码位置，确保同一SMS标签内的消息按添加顺序排列
             // 同时保证不同SMS标签间的消息也按正确顺序排列
             const itemIndex = sourceIndex + idx * 0.1;
-            console.log(`[Raymond Phone img fix] Adding item to queue: type=${msgObj.type}, index=${itemIndex}`);
+            if (isDevMode) {
+              console.log(`[Raymond Phone] Adding item to queue: type=${msgObj.type}, index=${itemIndex}`);
+            }
             _queueMessage(threadId, msgObj, itemIndex);
           });
-          console.log(`[Raymond Phone img fix] Added ${msgItems.length} items to batch for thread ${threadId}:`, msgItems.map(item => item.type));
+          if (isDevMode) {
+            console.log(`[Raymond Phone] Added ${msgItems.length} items to batch for thread ${threadId}:`, msgItems.map(item => item.type));
+          }
           parsedCount += msgItems.length;
         }
 
@@ -837,16 +903,40 @@ function parsePhone(block, messageId) {
           }
         }
         
+        // 处理纯文本群聊消息（没有图片的情况）
+        if (msgItems.length === 0 && text) {
+          const isDup = grpThread.messages.some(msg => msg.type === 'group_msg' && msg.name === gmsgFrom && msg.text === text && msg.time === msgTime);
+          if (!isDup) {
+            const msgObj = {
+              id: `gg_${Date.now()}_${msgItems.length}`,
+              from: 'incoming',
+              type: 'group_msg',
+              name: gmsgFrom,
+              time: msgTime,
+              text: text,
+              initials: senderTh.initials,
+              avatarBg: senderTh.avatarBg
+            };
+            if (messageId) msgObj.messageId = messageId;
+            msgItems.push(msgObj);
+            console.log(`[Raymond Phone] Added group text message to batch:`, text.slice(0, 50));
+          }
+        }
+        
         // 批量添加消息（队列模式，按源码顺序排序）
         if (msgItems.length > 0) {
           const sourceIndex = match.index; // 记录源码位置
           msgItems.forEach((msgObj, idx) => {
             // 使用递增的源码位置，确保同一GMSG标签内的消息按添加顺序排列
             const itemIndex = sourceIndex + idx * 0.1;
-            console.log(`[Raymond Phone img fix] Adding group item to queue: type=${msgObj.type}, name=${msgObj.name}, index=${itemIndex}`);
+            if (isDevMode) {
+              console.log(`[Raymond Phone] Adding group item to queue: type=${msgObj.type}, name=${msgObj.name}, index=${itemIndex}`);
+            }
             _queueMessage(groupId, msgObj, itemIndex);
           });
-          console.log(`[Raymond Phone img fix] Added ${msgItems.length} items to batch for group ${groupId}:`, msgItems.map(item => item.type));
+          if (isDevMode) {
+            console.log(`[Raymond Phone] Added ${msgItems.length} items to batch for group ${groupId}:`, msgItems.map(item => item.type));
+          }
           parsedCount += msgItems.length;
         }
         break;
@@ -1071,8 +1161,10 @@ function parsePhone(block, messageId) {
     parsedCount += flushed;
   }
 
-  console.log('[parsePhone] Finished parsing. Total items:', parsedCount);
-  console.log('[parsePhone] Current threads:', Object.keys(STATE.threads));
+  if (isDevMode) {
+    console.log('[parsePhone] Finished parsing. Total items:', parsedCount);
+    console.log('[parsePhone] Current threads:', Object.keys(STATE.threads));
+  }
   return parsedCount;
 }
 
