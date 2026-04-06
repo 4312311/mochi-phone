@@ -514,7 +514,6 @@ function parsePhone(block, messageId) {
   allTags.sort((a, b) => a.index - b.index);
   
   // 处理排序后的标签
-  const isDevMode = true; // 可以根据需要设置为 false
   if (isDevMode) {
     console.log('[Raymond Phone] Total tags found:', allTags.length);
   }
