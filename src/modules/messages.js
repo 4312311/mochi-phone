@@ -348,10 +348,18 @@ function extractImgsFromText(raw) {
 }
 
 function parsePhone(block, messageId) {
-  console.log('[parsePhone] ========== START PARSING ==========');
-  console.log('[parsePhone] Input block type:', typeof block);
-  console.log('[parsePhone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
-  console.log('[parsePhone] Full block content:', typeof block === 'string' ? block : block);
+  console.log('[Raymond Phone] ========== START PARSING ==========');
+  console.log('[Raymond Phone] Input block type:', typeof block);
+  console.log('[Raymond Phone] Input block length:', typeof block === 'string' ? block.length : 'not a string');
+  // 只打印PHONE标签中的内容，不打印所有内容
+  if (typeof block === 'string') {
+    const phoneMatch = block.match(/<PHONE>([\s\S]*?)<\/PHONE>/i);
+    if (phoneMatch) {
+      console.log('[Raymond Phone] Full PHONE block content:', phoneMatch[1]);
+    } else {
+      console.log('[Raymond Phone] Full PHONE block content:', block);
+    }
+  }
   console.log('[Raymond Phone] parsePhone messageId:', messageId);
 
   let parsedCount = 0;
@@ -556,7 +564,7 @@ function parsePhone(block, messageId) {
           const sourceIndex = match.index; // 记录源码位置
           msgItems.forEach((msgObj, idx) => {
             // 使用相同的源码位置，确保同一SMS标签内的消息按添加顺序排列
-            _queueMessage(threadId, msgObj, sourceIndex + idx);
+            _queueMessage(threadId, msgObj, sourceIndex + idx * 0.1);
           });
           parsedCount += msgItems.length;
         }
@@ -1247,29 +1255,59 @@ function renderBubbles(threadId) {
       return;
     }
     // ── 红包 ──
-    if (msg.type === 'hongbao') {
+    if (msg.type === 'hongbao' || msg.type === 'group_hongbao') {
       const openedHtml = msg.opened
         ? `<div class="rp-hb-amount"><small>¥</small>${escHtml(msg.amount)}</div>` : '';
-      const wrap = $(`<div class="rp-bwrap rp-in"></div>`);
       const onclick = msg.opened ? '' : `openHongbao('${threadId}','${msg.id}')`;
-      wrap.html(`
-        <div class="rp-hongbao ${msg.opened?'opened':''}" ${onclick?`onclick="${onclick}"`:''}>
-          <div class="rp-hb-top">
-            <div class="rp-hb-ico">🧧</div>
-            <div class="rp-hb-info">
-              <div class="rp-hb-from">${escHtml(msg.name)}</div>
-              <div class="rp-hb-note">${escHtml(msg.note||'恭喜发财')}</div>
+      
+      if (msg.type === 'group_hongbao') {
+        const customImg = STATE.avatars && STATE.avatars[msg.name];
+        const avEl = customImg
+          ? $(`<div class="rp-grp-av rp-av-img"><img class="rp-av-photo" src="${customImg}" alt=""/></div>`)
+          : $(`<div class="rp-grp-av" style="background:${msg.avatarBg}">${msg.initials}</div>`);
+        const wrap = $('<div class="rp-bwrap rp-in rp-grp"></div>');
+        const inner = $('<div>');
+        inner.append($('<div>').addClass('rp-grp-sender').text(msg.name));
+        inner.append($(`
+          <div class="rp-hongbao ${msg.opened?'opened':''}" ${onclick?`onclick="${onclick}"`:''}>
+            <div class="rp-hb-top">
+              <div class="rp-hb-ico">🧧</div>
+              <div class="rp-hb-info">
+                <div class="rp-hb-from">${escHtml(msg.name)}</div>
+                <div class="rp-hb-note">${escHtml(msg.note||'恭喜发财')}</div>
+              </div>
+            </div>
+            <div class="rp-hb-bot">
+              <div class="rp-hb-action">${msg.opened?'已领取':'点击领取红包'}</div>
+              ${openedHtml}
+              <div class="rp-hb-tag">微信红包</div>
             </div>
           </div>
-          <div class="rp-hb-bot">
-            <div class="rp-hb-action">${msg.opened?'已领取':'点击领取红包'}</div>
-            ${openedHtml}
-            <div class="rp-hb-tag">微信红包</div>
+          <div class="rp-bts">${msg.time}</div>
+        `));
+        wrap.append(avEl, inner);
+        area.append(wrap); return;
+      } else {
+        const wrap = $(`<div class="rp-bwrap rp-in"></div>`);
+        wrap.html(`
+          <div class="rp-hongbao ${msg.opened?'opened':''}" ${onclick?`onclick="${onclick}"`:''}>
+            <div class="rp-hb-top">
+              <div class="rp-hb-ico">🧧</div>
+              <div class="rp-hb-info">
+                <div class="rp-hb-from">${escHtml(msg.name)}</div>
+                <div class="rp-hb-note">${escHtml(msg.note||'恭喜发财')}</div>
+              </div>
+            </div>
+            <div class="rp-hb-bot">
+              <div class="rp-hb-action">${msg.opened?'已领取':'点击领取红包'}</div>
+              ${openedHtml}
+              <div class="rp-hb-tag">微信红包</div>
+            </div>
           </div>
-        </div>
-        <div class="rp-bts">${msg.time}</div>
-      `);
-      area.append(wrap); return;
+          <div class="rp-bts">${msg.time}</div>
+        `);
+        area.append(wrap); return;
+      }
     }
     // ── 语音消息 ──
     if (msg.type === 'voice') {
@@ -1315,15 +1353,15 @@ function renderBubbles(threadId) {
       inner.append($('<div>').addClass('rp-grp-sender').text(msg.name));
       const heights = [35,70,55,90,45,65,30];
       const bars = heights.map(h => `<div class="rp-wb" style="height:${h}%"></div>`).join('');
-      // 群聊语音默认已"播放"（直接展示文字，不需要点击）
+      const playedCls = msg.played ? 'played' : '';
       inner.append($(`
         <div class="rp-voice-wrap">
-          <div class="rp-voice-bbl played">
-            <div class="rp-voice-play">✓</div>
+          <div class="rp-voice-bbl ${playedCls}" onclick="playVoice('${threadId}','${msg.id}')">
+            <div class="rp-voice-play">${msg.played?'✓':'▶'}</div>
             <div class="rp-wave">${bars}</div>
             <div class="rp-voice-dur">${escHtml(msg.duration)}</div>
           </div>
-          <div class="rp-voice-txt">${escHtml(msg.text)}</div>
+          <div class="rp-voice-txt">${msg.played?escHtml(msg.text):''}</div>
         </div>
       `));
       inner.append($('<div>').addClass('rp-bts').text(msg.time));

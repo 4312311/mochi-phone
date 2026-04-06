@@ -542,9 +542,8 @@ function registerAIResponseListeners(eventSource, eventTypes) {
         const currentMessageId = String(messageIdx);
         window._lastProcessedMessageId = currentMessageId;
 
-        // 详细调试：记录完整的原始消息（前500字符）
-        console.log('[Raymond Phone] Full raw message (first 500 chars):', raw.substring(0, 500));
-        console.log('[Raymond Phone] Full raw message (last 500 chars):', raw.substring(Math.max(0, raw.length - 500)));
+        // 详细调试：记录消息摘要
+        console.log('[Raymond Phone] Message summary:', { length: raw.length, hasPhone: raw.includes('<PHONE>'), hasSms: raw.includes('<SMS>') });
 
         // 检查是否包含各种手机相关标签
         const hasPhoneOpen = /<PHONE\b/i.test(normalizedRaw);
