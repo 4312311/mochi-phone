@@ -546,7 +546,6 @@ function parsePhone(block, messageId) {
         const msgItems = [];
 
         // 解析原始内容，按照图片和文本的实际顺序添加消息
-        const rawContent = match[2] || '';
         let lastIndex = 0;
         
         // 查找所有图片标签
