@@ -357,6 +357,37 @@ function parsePhone(block, messageId) {
   let parsedCount = 0;
   let m;
 
+  // ── 收集待排序消息：记录原始位置用于按源码顺序排序 ──
+  const _pendingMessages = []; // { threadId, msgObj, index: 源码中位置 }
+  function _queueMessage(threadId, msgObj, sourceIndex) {
+    _pendingMessages.push({ threadId, msgObj, index: sourceIndex });
+  }
+  function _flushMessages() {
+    if (_pendingMessages.length === 0) return 0;
+    // 按线程分组，每组内按源码位置排序（保持 AI 输出的原始顺序）
+    const byThread = {};
+    _pendingMessages.forEach(({ threadId, msgObj, index }) => {
+      byThread[threadId] = byThread[threadId] || [];
+      byThread[threadId].push({ msgObj, index });
+    });
+    let added = 0;
+    Object.entries(byThread).forEach(([threadId, items]) => {
+      const th = STATE.threads[threadId];
+      if (!th) return;
+      // 按源码位置排序
+      items.sort((a, b) => a.index - b.index);
+      items.forEach(({ msgObj }) => {
+        th.messages.push(msgObj);
+        added++;
+      });
+      if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread += items.length;
+      if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
+      refreshBadges(); updatePreviews();
+    });
+    _pendingMessages.length = 0;
+    return added;
+  }
+
   // 去重：检查这条消息是否已经处理过（通过消息指纹）
   // 指纹 = PHONE块内容的MD5或简化哈希
   const blockHash = (messageId || 'noId') + '|' + block.length + '|' + (block.slice(0, 100) + block.slice(-100));
@@ -491,14 +522,10 @@ function parsePhone(block, messageId) {
       }
     }
 
-    // 批量添加消息
+    // 批量添加消息（队列模式，按源码顺序排序）
     if (msgItems.length > 0) {
-      msgItems.forEach(msgObj => th.messages.push(msgObj));
-      if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread++;
-      refreshBadges(); updatePreviews();
-      if (STATE.currentView === 'thread' && STATE.currentThread === threadId) renderBubbles(threadId);
-      if (text) showBanner(th.name, text, msgTime);
-      saveState();
+      const sourceIndex = smsTagRe.lastIndex - m[0].length; // 记录源码位置
+      msgItems.forEach(msgObj => _queueMessage(threadId, msgObj, sourceIndex));
       parsedCount += msgItems.length;
     }
 
@@ -552,12 +579,25 @@ function parsePhone(block, messageId) {
     parsedCount++;
   }
   
-  // ── VOICE ──
+  // ── VOICE ──（队列模式，按源码顺序排序）
   const voiceRe = /<VOICE\s+FROM="([^"]+)"\s+TIME="([^"]+)"\s+DURATION="([^"]+)">([\s\S]*?)<\/VOICE>/gi;
   while ((m = voiceRe.exec(block)) !== null) {
     const voiceFrom = m[1].trim();
     if (_isUserFrom(voiceFrom)) { console.log('[Phone:guard] VOICE FROM=user blocked:', voiceFrom); continue; }
-    incomingVoice(voiceFrom, m[2].trim(), m[3].trim(), m[4].trim());
+    const sourceIndex = voiceRe.lastIndex - m[0].length;
+    const thread = findOrCreateThread(voiceFrom);
+    const msgObj = {
+      id: `vc_${Date.now()}`,
+      from: 'incoming',
+      type: 'voice',
+      name: voiceFrom,
+      time: m[2].trim(),
+      duration: m[3].trim(),
+      text: m[4].trim(),
+      played: false
+    };
+    if (messageId) msgObj.messageId = messageId;
+    _queueMessage(thread.id, msgObj, sourceIndex);
     parsedCount++;
   }
   
@@ -760,6 +800,18 @@ function parsePhone(block, messageId) {
       parsedCount++;
       console.log('[parsePhone] Updated sync state:', STATE.sync);
     }
+  }
+
+  // 刷新队列中的消息（按源码顺序排序）
+  const firstThreadId = _pendingMessages[0]?.threadId;
+  const flushed = _flushMessages();
+  if (flushed > 0) {
+    const th = STATE.threads[firstThreadId];
+    if (th) {
+      showBanner(th.name, '', '');
+    }
+    saveState();
+    parsedCount += flushed;
   }
 
   console.log('[parsePhone] Finished parsing. Total items:', parsedCount);
