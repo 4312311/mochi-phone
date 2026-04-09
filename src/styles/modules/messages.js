@@ -56,6 +56,23 @@ export const css = `#rp-view-messages { background:transparent !important; displ
 .rp-recv { background:var(--rp-recv-bg); color:var(--rp-recv-color); border-radius:var(--rp-bubble-radius-in); }
 .rp-bts  { font-size:10px; color:var(--rp-bts-color); padding:0 4px; }
 
+/* 图片消息气泡样式 */
+.rp-img-bubble {
+  padding: 4px !important;  /* 减少内边距让图片填充更多空间 */
+  min-width: 80px;        /* 最小宽度 */
+  min-height: 80px;       /* 最小高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rp-img-bubble img {
+  max-width: 100% !important;
+  max-height: 300px !important;  /* 限制最大高度 */
+  border-radius: 12px;           /* 圆角 */
+  object-fit: contain;            /* 保持图片比例 */
+}
+
 /* composer */
 #rp-composer {
   display:flex !important;

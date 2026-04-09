@@ -413,17 +413,22 @@ function parsePhone(block, messageId) {
         }));
       }
       
-      // 清空线程的消息数组，只保留没有messageId的消息（用户发送的消息）
-      const oldMessagesCount = th.messages.length;
-      th.messages = th.messages.filter(msg => !msg.messageId);
+      // 只添加新消息，不清空现有消息（避免清除其他角色的历史消息）
       if (isDevMode) {
-        console.log('[Raymond Phone] Cleared', oldMessagesCount - th.messages.length, 'messages from thread', threadId);
+        console.log('[Raymond Phone] Adding messages to thread', threadId, 'without clearing existing messages');
       }
-      
-      // 添加新消息
+
+      // 添加新消息，避免重复
       items.forEach(({ msgObj }) => {
-        th.messages.push(msgObj);
-        added++;
+        // 检查是否已存在（避免重复）
+        const isDuplicate = th.messages.some(msg =>
+          msg.id === msgObj.id ||
+          (msg.type === msgObj.type && msg.text === msgObj.text && msg.time === msgObj.time)
+        );
+        if (!isDuplicate) {
+          th.messages.push(msgObj);
+          added++;
+        }
       });
       
       if (STATE.currentView !== 'thread' || STATE.currentThread !== threadId) th.unread += items.length;
@@ -1169,8 +1174,9 @@ function parsePhone(block, messageId) {
 
 // 清理旧消息（当 AI 消息被重新生成时）
 // messageId: 可选，要删除的消息所属的 AI 楼层 ID，如果不传则删除所有消息
-function cleanupOldPhoneMessages(messageId) {
-  console.log('[Raymond Phone] Cleaning up old phone messages, messageId:', messageId);
+// characterName: 可选，角色名称，用于精确清理特定角色的消息
+function cleanupOldPhoneMessages(messageId, characterName) {
+  console.log('[Raymond Phone] Cleaning up old phone messages, messageId:', messageId, 'character:', characterName);
 
   // 如果没有有效的 messageId，不删除任何消息（防止误删）
   const hasValidMessageId = messageId !== undefined && messageId !== null && messageId !== '';
@@ -1186,13 +1192,21 @@ function cleanupOldPhoneMessages(messageId) {
     const thread = STATE.threads[STATE.currentThread];
     const oldLength = thread.messages.length;
 
-    // 只删除带有指定 messageId 的消息
-    thread.messages = thread.messages.filter(msg => msg.messageId !== messageId);
+    // 只删除带有指定 messageId 且来自同一角色的消息
+    thread.messages = thread.messages.filter(msg => {
+      // 如果没有指定角色，则按 messageId 清理
+      if (!characterName) {
+        return msg.messageId !== messageId;
+      }
+
+      // 如果指定了角色，则同时匹配 messageId 和角色
+      return !(msg.messageId === messageId && msg.from === characterName);
+    });
 
     const newLength = thread.messages.length;
     cleanedCount = oldLength - newLength;
     if (cleanedCount > 0) {
-      console.log('[Raymond Phone] Cleared current thread:', STATE.currentThread, 'removed', cleanedCount, 'messages');
+      console.log('[Raymond Phone] Cleared', cleanedCount, 'messages for character:', characterName);
     }
   }
 
@@ -1678,7 +1692,24 @@ function renderBubbles(threadId) {
     if (msg.type === 'image') {
       const isUser = msg.from === 'user';
       const wrap = $(`<div class="rp-bwrap ${isUser ? 'rp-out' : 'rp-in'}"></div>`);
-      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble"><img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/></div>`);
+      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble">
+        <img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block" onerror="this.onerror=null; this.src='#'; $(this).replaceWith('<div style=\"background:#f0f0f0;padding:20px;border-radius:12px;color:#666;\">图片加载失败</div>');"/>
+      </div>`);
+      const time = $(`<div class="rp-bts">${msg.time}</div>`);
+      wrap.append(bubble, time);
+      area.append(wrap);
+      return;
+    }
+
+    // ── 待处理图片消息 ──
+    if (msg.type === 'pending_image') {
+      const isUser = msg.from === 'user';
+      const wrap = $(`<div class="rp-bwrap ${isUser ? 'rp-out' : 'rp-in'}"></div>`);
+      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-pending-bubble">
+        <div style="padding:10px;border-radius:12px;background:#f0f0f0;color:#666;">
+          🎨 正在生成图片: ${escHtml(msg.prompt)}
+        </div>
+      </div>`);
       const time = $(`<div class="rp-bts">${msg.time}</div>`);
       wrap.append(bubble, time);
       area.append(wrap);

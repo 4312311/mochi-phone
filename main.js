@@ -42,7 +42,8 @@ import {
   cleanInvalidContacts,
   getAvatar,
   setAvatar,
-  saveState
+  saveState,
+  cleanupOldPhoneMessages
 } from './src/modules/messages.js';
 
 // 4. 导入主题模块
@@ -529,8 +530,12 @@ function registerAIResponseListeners(eventSource, eventTypes) {
           // 只有有效的 messageId 才执行清理，防止误删
           const hasValidMessageId = oldMessageId !== undefined && oldMessageId !== null && oldMessageId !== '';
           if (hasValidMessageId) {
-            console.log('[Raymond Phone] AI message regenerated, clearing old phone messages for messageId:', oldMessageId);
-            cleanupOldMessages(oldMessageId);
+            // 获取当前AI角色名称
+            const characterName = ctx.characterName || ctx.currentCharacterName || ctx.character;
+            console.log('[Raymond Phone] AI message regenerated, clearing old messages for:', characterName);
+
+            // 传入角色名称进行精确清理
+            cleanupOldPhoneMessages(oldMessageId, characterName);
           } else {
             console.log('[Raymond Phone] AI message regenerated but no valid oldMessageId, skipping cleanup');
           }
