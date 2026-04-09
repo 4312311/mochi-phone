@@ -2301,5 +2301,6 @@ export {
   getAvatar,
   setAvatar,
   getSTATE,
-  saveState
+  saveState,
+  cleanupOldPhoneMessages
 };
