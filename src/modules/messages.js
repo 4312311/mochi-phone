@@ -649,7 +649,7 @@ function parsePhone(block, messageId) {
             isDup = th.messages.some(msg => msg.text === cleanText && msg.time === msgTime);
           }
           if (!isDup) {
-            const msgObj = { from: threadId, text: cleanText, time: msgTime };
+            const msgObj = { from: threadId, text: cleanText, time: msgTime, type: 'sms' };
             if (messageId) msgObj.messageId = messageId;
             msgItems.push(msgObj);
           }
@@ -664,7 +664,7 @@ function parsePhone(block, messageId) {
             isDup = th.messages.some(msg => msg.text === text && msg.time === msgTime);
           }
           if (!isDup) {
-            const msgObj = { from: threadId, text: text, time: msgTime };
+            const msgObj = { from: threadId, text: text, time: msgTime, type: 'sms' };
             if (messageId) msgObj.messageId = messageId;
             msgItems.push(msgObj);
             console.log(`[Raymond Phone] Added text message to batch:`, text.slice(0, 50));
@@ -1692,9 +1692,19 @@ function renderBubbles(threadId) {
     if (msg.type === 'image') {
       const isUser = msg.from === 'user';
       const wrap = $(`<div class="rp-bwrap ${isUser ? 'rp-out' : 'rp-in'}"></div>`);
-      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble">
-        <img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block" onerror="this.onerror=null; this.src='#'; $(this).replaceWith('<div style=\"background:#f0f0f0;padding:20px;border-radius:12px;color:#666;\">图片加载失败</div>');"/>
-      </div>`);
+
+      // 创建图片元素
+      const img = $(`<img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/>`);
+
+      // 图片加载错误处理
+      img.on('error', function() {
+        console.error('[Raymond Phone] Image failed to load:', this.src);
+        $(this).replaceWith('<div style="background:#f0f0f0;padding:20px;border-radius:12px;color:#666;">图片加载失败</div>');
+      });
+
+      const bubble = $(`<div class="rp-bubble ${isUser ? 'rp-sent' : 'rp-recv'} rp-img-bubble"></div>`);
+      bubble.append(img);
+
       const time = $(`<div class="rp-bts">${msg.time}</div>`);
       wrap.append(bubble, time);
       area.append(wrap);
@@ -1724,7 +1734,17 @@ function renderBubbles(threadId) {
       const wrap = $('<div class="rp-bwrap rp-in rp-grp"></div>');
       const inner = $('<div>');
       inner.append($('<div>').addClass('rp-grp-sender').text(msg.name));
-      inner.append($(`<div class="rp-bubble rp-recv rp-img-bubble"><img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/></div>`));
+
+      // 创建图片元素，添加错误处理
+      const img = $(`<img src="${escHtml(msg.src)}" alt="图片" style="max-width:100%;display:block"/>`);
+      img.on('error', function() {
+        console.error('[Raymond Phone] Group image failed to load:', this.src);
+        $(this).replaceWith('<div style="background:#f0f0f0;padding:20px;border-radius:12px;color:#666;">图片加载失败</div>');
+      });
+
+      const bubble = $(`<div class="rp-bubble rp-recv rp-img-bubble"></div>`);
+      bubble.append(img);
+      inner.append(bubble);
       inner.append($('<div>').addClass('rp-bts').text(msg.time));
       wrap.append(avEl, inner);
       area.append(wrap);
